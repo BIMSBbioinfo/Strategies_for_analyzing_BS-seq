@@ -1,0 +1,297 @@
+---
+title: "The comparison of differentially methylated bases detection tools on simulated data"
+author: "Katarzyna Wreczycka"
+output: 
+  html_notebook:
+    toc:        TRUE
+    toc_float:  TRUE
+    theme:      "lumen"
+    number_sections: FALSE
+    code_folding: "hide"
+    self_contained: TRUE
+---
+
+# The comparison of the performance of various methods for calling differential methylation cytosines
+
+## Goal
+
+Here, we examined the performance of various differential methylation methods. We compared three classes of methods:
+
+1. t-test/linear regression, 
+2. logistic regression,
+3. beta binomial regression. 
+
+Three different tools were used: 
+
+1. DSS (beta binomial regression), 
+2. limma (linear regression), 
+3. methylKit (logistic regression with/without overdispersion correction). 
+
+
+## Functions
+Here are functions to run limma and to run our simulation:
+
+```{r}
+# Load libraries and functions
+library("methylKit")
+library(ggplot2)
+library(gridExtra)
+library(grid)
+source("./functions/dataSim2.R")
+source("./functions/limma.R")
+
+```
+
+```{r}
+
+#' Calculate rates of models compared to simulation
+#' 
+#' @param simOutput this is the output of dataSim2 function
+#' @param sub.methylDiff this is the q-value filtered methylDiff object
+#'                       output of getMethylDiff()
+#' @param methylDiff this is the non-filtered methylDiff object
+#'                   output of calculateDiffMeth() and similar functions
+#' @return returns a vector of accuracy metrics, TP, FP, Sensivity, etc
+calc.rates<-function(simOutput,
+                         sub.methylDiff,
+                         methylDiff # this argument is not needed: TODO remove it to not be confused again
+                         ){
+  all=paste(simOutput[[1]][[1]],simOutput[[1]][[2]],
+            simOutput[[1]][[3]])
+  
+  true.dm=all[simOutput[[2]]]
+  true.ndm=all[-simOutput[[2]]]
+  
+  pred.dm=paste(sub.methylDiff[[1]],sub.methylDiff[[2]],
+                sub.methylDiff[[3]])
+  pred.ndm=all[! all %in% pred.dm]
+  
+  TP=sum(true.dm %in% pred.dm)
+  
+  FN=sum(pred.ndm %in% true.dm)
+  
+  FP=sum(pred.dm %in% true.ndm)
+  
+  TN=sum(pred.ndm %in% true.ndm)
+  
+  p = TP / (TP + FP)
+  r = TP / (TP+FN)
+  f_score = 2*((p*r)/(p+r))
+  
+  return(c(TP=TP,FN=FN,FP=FP,TN=TN,
+           acc=(TP+TN)/length(all),
+           spec=TN/(TN+FP) ,
+           sens=TP/(TP+FN),
+           f_score= f_score,
+           precision=as.numeric(TP / (TP + FP)),
+           recall=r,
+           NPV= as.numeric(TN / (TN + FN))
+           ) )
+}
+
+
+# ---------------------------------------------------------------------------- #
+#' Run simulation
+#' 
+#' Call differentially methylated cytosines using methylKit, DSS and limma.
+#' It calculate true positive positives (TP), false negatives (FN), false positives (FP),
+#' accuracy (acc), specificity (spec), sensiticity (sens) and F-score (f_score).
+#' 
+#' @param sim.methylBase a methylBase object from the methylKit library
+#' @param cores a number of cores
+#' @param difference cutoff for absolute value of methylation percentage change
+#'                   between test and control (default:5)
+#' @param qvalue cutoff for qvalue of differential methylation statistic
+#'               (default:0.01)
+#' @return returns a matrix with TP, FN, FP, TN, acc, spec, sens, f_score (columns)
+#'         using tools that calculate differentially methylated regions (rows)
+run.models = function(sim.methylBase, cores=1,
+                      difference=5, qvalue=0.01){
+  
+  require(methylKit)
+  require(DSS)
+
+  
+  ## run methylkit
+  combined = data.frame(test=c("F", "Chisq","F", "Chisq"),
+                        adjust="qvalue",
+                        overd=c("none","none", "MN", "MN"),
+                        name=c("methylKit.F.qvalue.none",
+                               "methylKit.Chisq.qvalue.none",
+                               "methylKit.F.qvalue.MN",
+                               "methylKit.Chisq.qvalue.MN"), 
+                        stringsAsFactors = FALSE)
+  diff.list = list()
+  methylKit.list=list()
+  for(i in 1:nrow(combined)){
+    co = combined[i,]
+    methylkit.obj <- calculateDiffMeth(sim.methylBase[[1]], 
+                                       overdispersion=co$overd,
+                                       adjust = co$adjust,
+                                       test=co$test,
+                                       mc.cores=cores)
+    methylkit.obj.diff = getMethylDiff(methylkit.obj, 
+                                       difference=difference,qvalue=qvalue)
+    diff.list[[i]] <- methylkit.obj.diff
+    methylKit.list[[i]]=calc.rates(sim.methylBase,
+                                       methylkit.obj.diff,
+                                       methylkit.obj)
+    
+  }
+  names(methylKit.list) <- combined$name
+  names(diff.list) <- combined$name
+  
+  
+  ## run DSS
+  dss.qvalue = calculateDiffMethDSS(sim.methylBase[[1]],
+                                    adjust="qvalue",
+                                    mc.cores=cores)
+  dss.qvalue.diff = getMethylDiff(dss.qvalue, difference=difference,qvalue=qvalue)
+  
+  diff.list[["DSS"]]=dss.qvalue.diff
+  methylKit.list[["DSS"]]=calc.rates(sim.methylBase,dss.qvalue.diff,
+                                                dss.qvalue)
+
+  limma.qvalue=limma.meth(sim.methylBase[[1]])
+  limma.qvalue.diff = getMethylDiff(limma.qvalue, 
+                                    difference=difference,qvalue=qvalue)
+  
+  
+  ## run limma
+  diff.list[["limma.qvalue"]] = limma.qvalue.diff
+  methylKit.list[["limma.qvalue"]]=calc.rates(sim.methylBase,
+                                                  limma.qvalue.diff,
+                                                  limma.qvalue)
+
+  do.call("rbind",methylKit.list)
+}
+
+
+```
+
+
+## Simulation
+
+We simulated a dataset consisting of 6 samples (3 controls and 3 samples with treatment). The read coverage modeled by a binomial distribution. The methylation background followed a beta distribution with parameters $alpha=0.4$, $beta=0.5$ and $theta=10$. We simulated 6 sets of 5000 CpG sites where methylation at 50% of the sites was affected by the treatment to varying degrees - specifically, methylation was elevated by 5%, 10%, 15%, 20% and 25% in the test sample respectively in each set. 
+
+To adjust p-values for multiple testing, we used q-value method and we defined differentially methylated CpG sites with q-values below 0.01 for all examined methods. We calculated sensitivity, specificity and F-score for each of the three methods above. Sensitivity measured the proportion of true differentially methylated CpGs that were correctly identified as such, specificity was calculated as the proportion of detected CpGs that were truly not differentially methylated and correctly identified as such and F-score refers to a way to measure sensitivity and specificity by calculating their harmonic mean.
+
+Here, we calculate sensitivity, specificity and F-score of performance of tools for calling differentially methylated cytosines:
+
+```{r}
+
+# variables
+effects = c(5, 10, 15, 20, 25)
+cores=20
+
+models.res=list()
+set.seed(111)
+for(effect in effects){
+  
+  # Effect by the treatment
+  print(effect)
+
+  # Generate simulated data using methylKit library
+  sim.methylBase = dataSim2(replicates=6,
+                                 sites=5000,
+                                 treatment=c(1,1,1,0,0,0),
+                                 percentage=50,
+                                 effect=effect,
+                                 add.info=TRUE)
+  
+  # Run models 
+  models.res[[as.character(effect)]] = run.models(sim.methylBase, cores=cores,
+                                                   difference=5, qvalue=0.01)
+  
+}
+
+```
+
+
+## Visualisation
+
+The visualisation of sensitivity, specificity and F-score for different effect sizes.
+
+```{r}
+
+# Convert list of matrices to a data.frame
+models.res.ma = do.call("rbind", models.res)
+models.res.df = data.frame(models.res.ma)
+models.res.df = cbind(models.res.df, 
+                      tool=rownames(models.res.ma),
+                      effect=as.factor(as.numeric(sapply(effects, 
+                                               function(x) 
+                                                 rep(x, nrow(models.res[[1]])  )))))
+
+# for the publication
+models.res.df$tool = as.character(models.res.df$tool)
+models.res.df = models.res.df[-which(models.res.df$tool=="methylKit.F.qvalue.none"),]
+models.res.df$tool = as.factor(models.res.df$tool)
+
+# Rename names of tools
+levels(models.res.df$tool)[levels(models.res.df$tool)=="DSS.qvalue"] <- "DSS"
+levels(models.res.df$tool)[levels(models.res.df$tool)=="limma.qvalue"] <- "limma"
+levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.Chisq.qvalue.MN"] <- "methylKit-Chisqtest-OC"
+levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.Chisq.qvalue.none"] <- "methylKit-Chisqtest"
+levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.F.qvalue.MN"] <- "methylKit-Ftest-OC"
+# Sort names of tools
+#levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.F.qvalue.none"] <- "methylKit-Ftest"
+#models.res.df$tool=relevel(models.res.df$tool, "methylKit-Ftest")
+models.res.df$tool=relevel(models.res.df$tool, "methylKit-Ftest-OC")
+models.res.df$tool=relevel(models.res.df$tool, "methylKit-Chisqtest-OC")
+models.res.df$tool=relevel(models.res.df$tool, "methylKit-Chisqtest")
+models.res.df$tool=relevel(models.res.df$tool, "limma")
+models.res.df$tool=relevel(models.res.df$tool, "DSS")
+
+  
+
+# A palette
+cbPalette <- c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+p_sens<-ggplot(models.res.df,aes(effect, sens, fill=tool))+
+  geom_bar(stat="identity",position='dodge',colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Sensitivity", x="Effect size (methylation difference)",fill='Tool')
+
+p_spec<-ggplot(models.res.df,aes(effect, spec, fill=tool))+
+  geom_bar(stat="identity",
+           position="dodge",
+           colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Specificity", x="Effect size (methylation difference)",fill='Tool')
+
+p_recall <- ggplot(models.res.df,aes(effect, recall, fill=tool))+
+  geom_bar(stat="identity",position='dodge',colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Recall", x="Effect size (methylation difference)",fill='Tool')
+
+p_fscore <- ggplot(models.res.df,aes(effect, f_score, fill=tool))+
+  geom_bar(stat="identity",position='dodge',colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="F-score", x="Effect size (methylation difference)",fill='Tool')
+
+
+p_sens1 <- arrangeGrob(p_sens, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),
+                                              just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_spec1 <- arrangeGrob(p_spec, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+
+
+grid.arrange(p_sens1, p_spec1, p_fscore1, ncol = 2, nrow=2)
+
+
+```
+
+
+```{r}
+sessionInfo()
+```
+
