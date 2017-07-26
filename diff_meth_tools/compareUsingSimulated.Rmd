@@ -5,9 +5,11 @@ output: rmarkdown::github_document
 date: "`r Sys.Date()`"
 ---
 
-# The comparison of the performance of various methods for calling differential methylation cytosines
+```{r, echo = FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="##", fig.retina=2, fig.path = "diff_meth_figs/diff_meth-")
+```
 
-## Goal
+# Goal
 
 Here, we examined the performance of various differential methylation methods. We compared three classes of methods:
 
@@ -22,7 +24,7 @@ Three different tools were used:
 3. methylKit (logistic regression with/without overdispersion correction). 
 
 
-## Functions
+# Functions
 Here are functions to run limma and to run our simulation:
 
 ```{r}
@@ -164,7 +166,7 @@ run.models = function(sim.methylBase, cores=1,
 ```
 
 
-## Simulation
+# Simulation
 
 We simulated a dataset consisting of 6 samples (3 controls and 3 samples with treatment). The read coverage modeled by a binomial distribution. The methylation background followed a beta distribution with parameters $alpha=0.4$, $beta=0.5$ and $theta=10$. We simulated 6 sets of 5000 CpG sites where methylation at 50% of the sites was affected by the treatment to varying degrees - specifically, methylation was elevated by 5%, 10%, 15%, 20% and 25% in the test sample respectively in each set. 
 
@@ -202,7 +204,7 @@ for(effect in effects){
 ```
 
 
-## Visualisation
+# Visualisation
 
 The visualisation of sensitivity, specificity and F-score for different effect sizes.
 

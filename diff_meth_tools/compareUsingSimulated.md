@@ -4,11 +4,10 @@ Katarzyna Wreczycka
 2017-07-26
 
 <!-- rnb-text-begin -->
-The comparison of the performance of various methods for calling differential methylation cytosines
-===================================================================================================
-
+<!-- rnb-text-end -->
+<!-- rnb-text-begin -->
 Goal
-----
+====
 
 Here, we examined the performance of various differential methylation methods. We compared three classes of methods:
 
@@ -23,7 +22,7 @@ Three different tools were used:
 3.  methylKit (logistic regression with/without overdispersion correction).
 
 Functions
----------
+=========
 
 Here are functions to run limma and to run our simulation:
 
@@ -41,6 +40,7 @@ source("./functions/limma.R")
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 ``` r
+
 #' Calculate rates of models compared to simulation
 #' 
 #' @param simOutput this is the output of dataSim2 function
@@ -166,7 +166,7 @@ run.models = function(sim.methylBase, cores=1,
 
 <!-- rnb-text-begin -->
 Simulation
-----------
+==========
 
 We simulated a dataset consisting of 6 samples (3 controls and 3 samples with treatment). The read coverage modeled by a binomial distribution. The methylation background followed a beta distribution with parameters \(alpha=0.4\), \(beta=0.5\) and \(theta=10\). We simulated 6 sets of 5000 CpG sites where methylation at 50% of the sites was affected by the treatment to varying degrees - specifically, methylation was elevated by 5%, 10%, 15%, 20% and 25% in the test sample respectively in each set.
 
@@ -176,6 +176,7 @@ Here, we calculate sensitivity, specificity and F-score of performance of tools 
 
 <!-- rnb-text-end -->
 ``` r
+
 # variables
 effects = c(5, 10, 15, 20, 25)
 cores=20
@@ -200,123 +201,102 @@ for(effect in effects){
                                                    difference=5, qvalue=0.01)
   
 }
+## [1] 5
+## Loading required package: DSS
+## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
+## logical.return = TRUE, : there is no package called 'DSS'
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## Using internal DSS code... 
+## [1] 10
+## Loading required package: DSS
+## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
+## logical.return = TRUE, : there is no package called 'DSS'
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## Using internal DSS code... 
+## [1] 15
+## Loading required package: DSS
+## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
+## logical.return = TRUE, : there is no package called 'DSS'
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## Using internal DSS code... 
+## [1] 20
+## Loading required package: DSS
+## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
+## logical.return = TRUE, : there is no package called 'DSS'
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## Using internal DSS code... 
+## [1] 25
+## Loading required package: DSS
+## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
+## logical.return = TRUE, : there is no package called 'DSS'
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## two groups detected:
+##  will calculate methylation difference as the difference of
+## treatment (group: 1) - control (group: 0)
+## Using internal DSS code...
 ```
-
-    [1] 5
-
-    Loading required package: DSS
-
-    Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-    logical.return = TRUE, : there is no package called 'DSS'
-
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-
-    Using internal DSS code... 
-    [1] 10
-
-    Loading required package: DSS
-
-    Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-    logical.return = TRUE, : there is no package called 'DSS'
-
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-
-    Using internal DSS code... 
-    [1] 15
-
-    Loading required package: DSS
-
-    Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-    logical.return = TRUE, : there is no package called 'DSS'
-
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-
-    Using internal DSS code... 
-    [1] 20
-
-    Loading required package: DSS
-
-    Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-    logical.return = TRUE, : there is no package called 'DSS'
-
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-
-    Using internal DSS code... 
-    [1] 25
-
-    Loading required package: DSS
-
-    Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-    logical.return = TRUE, : there is no package called 'DSS'
-
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-    two groups detected:
-     will calculate methylation difference as the difference of
-    treatment (group: 1) - control (group: 0)
-
-    Using internal DSS code... 
 
 <!-- rnb-text-begin -->
 Visualisation
--------------
+=============
 
 The visualisation of sensitivity, specificity and F-score for different effect sizes.
 
 <!-- rnb-text-end -->
 ``` r
+
 # Convert list of matrices to a data.frame
 models.res.ma = do.call("rbind", models.res)
 models.res.df = data.frame(models.res.ma)
@@ -391,69 +371,68 @@ p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("c", x=unit(0, "npc"),y=unit(1
 grid.arrange(p_sens1, p_spec1, p_fscore1, ncol = 2, nrow=2)
 ```
 
-![](compareUsingSimulated_files/figure-markdown_github-ascii_identifiers/vis-1.png)
+<img src="diff_meth_figs/diff_meth-vis-1.png" width="960" />
 
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 ``` r
 sessionInfo()
+## R version 3.4.0 (2017-04-21)
+## Platform: x86_64-pc-linux-gnu (64-bit)
+## Running under: Ubuntu 16.04.1 LTS
+## 
+## Matrix products: default
+## BLAS: /usr/lib/libblas/libblas.so.3.6.0
+## LAPACK: /usr/lib/lapack/liblapack.so.3.6.0
+## 
+## locale:
+##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+##  [3] LC_TIME=de_DE.UTF-8        LC_COLLATE=en_US.UTF-8    
+##  [5] LC_MONETARY=de_DE.UTF-8    LC_MESSAGES=en_US.UTF-8   
+##  [7] LC_PAPER=de_DE.UTF-8       LC_NAME=C                 
+##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+## [11] LC_MEASUREMENT=de_DE.UTF-8 LC_IDENTIFICATION=C       
+## 
+## attached base packages:
+##  [1] grid      parallel  stats4    stats     graphics  grDevices utils    
+##  [8] datasets  methods   base     
+## 
+## other attached packages:
+##  [1] gridExtra_2.2.1      ggplot2_2.2.1        qvalue_2.8.0        
+##  [4] limma_3.32.3         emdbook_1.3.9        methylKit_1.3.3     
+##  [7] GenomicRanges_1.28.4 GenomeInfoDb_1.12.2  IRanges_2.10.2      
+## [10] S4Vectors_0.14.3     BiocGenerics_0.22.0  rmarkdown_1.6       
+## 
+## loaded via a namespace (and not attached):
+##  [1] SummarizedExperiment_1.6.3 gtools_3.5.0              
+##  [3] reshape2_1.4.2             splines_3.4.0             
+##  [5] lattice_0.20-34            tcltk_3.4.0               
+##  [7] colorspace_1.3-2           htmltools_0.3.6           
+##  [9] rtracklayer_1.36.4         yaml_2.1.14               
+## [11] base64enc_0.1-3            XML_3.98-1.9              
+## [13] rlang_0.1.1                R.oo_1.21.0               
+## [15] R.utils_2.5.0              BiocParallel_1.10.1       
+## [17] fastseg_1.22.0             matrixStats_0.52.2        
+## [19] GenomeInfoDbData_0.99.0    plyr_1.8.4                
+## [21] stringr_1.2.0              zlibbioc_1.22.0           
+## [23] Biostrings_2.44.1          munsell_0.4.3             
+## [25] gtable_0.2.0               R.methodsS3_1.7.1         
+## [27] coda_0.19-1                evaluate_0.10.1           
+## [29] labeling_0.3               Biobase_2.36.2            
+## [31] knitr_1.16                 Rcpp_0.12.12              
+## [33] scales_0.4.1               backports_1.1.0           
+## [35] DelayedArray_0.2.7         jsonlite_1.5              
+## [37] XVector_0.16.0             Rsamtools_1.28.0          
+## [39] digest_0.6.12              stringi_1.1.5             
+## [41] numDeriv_2016.8-1          rprojroot_1.2             
+## [43] tools_3.4.0                bitops_1.0-6              
+## [45] bbmle_1.0.19               magrittr_1.5              
+## [47] lazyeval_0.2.0             RCurl_1.95-4.8            
+## [49] tibble_1.3.3               MASS_7.3-45               
+## [51] Matrix_1.2-7.1             data.table_1.10.4         
+## [53] mclust_5.3                 GenomicAlignments_1.12.1  
+## [55] compiler_3.4.0
 ```
-
-    R version 3.4.0 (2017-04-21)
-    Platform: x86_64-pc-linux-gnu (64-bit)
-    Running under: Ubuntu 16.04.1 LTS
-
-    Matrix products: default
-    BLAS: /usr/lib/libblas/libblas.so.3.6.0
-    LAPACK: /usr/lib/lapack/liblapack.so.3.6.0
-
-    locale:
-     [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
-     [3] LC_TIME=de_DE.UTF-8        LC_COLLATE=en_US.UTF-8    
-     [5] LC_MONETARY=de_DE.UTF-8    LC_MESSAGES=en_US.UTF-8   
-     [7] LC_PAPER=de_DE.UTF-8       LC_NAME=C                 
-     [9] LC_ADDRESS=C               LC_TELEPHONE=C            
-    [11] LC_MEASUREMENT=de_DE.UTF-8 LC_IDENTIFICATION=C       
-
-    attached base packages:
-     [1] grid      parallel  stats4    stats     graphics  grDevices utils    
-     [8] datasets  methods   base     
-
-    other attached packages:
-     [1] gridExtra_2.2.1      ggplot2_2.2.1        qvalue_2.8.0        
-     [4] limma_3.32.3         emdbook_1.3.9        methylKit_1.3.3     
-     [7] GenomicRanges_1.28.4 GenomeInfoDb_1.12.2  IRanges_2.10.2      
-    [10] S4Vectors_0.14.3     BiocGenerics_0.22.0  rmarkdown_1.6       
-
-    loaded via a namespace (and not attached):
-     [1] SummarizedExperiment_1.6.3 gtools_3.5.0              
-     [3] reshape2_1.4.2             splines_3.4.0             
-     [5] lattice_0.20-34            tcltk_3.4.0               
-     [7] colorspace_1.3-2           htmltools_0.3.6           
-     [9] rtracklayer_1.36.4         yaml_2.1.14               
-    [11] base64enc_0.1-3            XML_3.98-1.9              
-    [13] rlang_0.1.1                R.oo_1.21.0               
-    [15] R.utils_2.5.0              BiocParallel_1.10.1       
-    [17] fastseg_1.22.0             matrixStats_0.52.2        
-    [19] GenomeInfoDbData_0.99.0    plyr_1.8.4                
-    [21] stringr_1.2.0              zlibbioc_1.22.0           
-    [23] Biostrings_2.44.1          munsell_0.4.3             
-    [25] gtable_0.2.0               R.methodsS3_1.7.1         
-    [27] coda_0.19-1                evaluate_0.10.1           
-    [29] labeling_0.3               Biobase_2.36.2            
-    [31] knitr_1.16                 Rcpp_0.12.12              
-    [33] scales_0.4.1               backports_1.1.0           
-    [35] DelayedArray_0.2.7         jsonlite_1.5              
-    [37] XVector_0.16.0             Rsamtools_1.28.0          
-    [39] digest_0.6.12              stringi_1.1.5             
-    [41] numDeriv_2016.8-1          rprojroot_1.2             
-    [43] tools_3.4.0                bitops_1.0-6              
-    [45] bbmle_1.0.19               magrittr_1.5              
-    [47] lazyeval_0.2.0             RCurl_1.95-4.8            
-    [49] tibble_1.3.3               MASS_7.3-45               
-    [51] Matrix_1.2-7.1             data.table_1.10.4         
-    [53] mclust_5.3                 GenomicAlignments_1.12.1  
-    [55] compiler_3.4.0            
 
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
