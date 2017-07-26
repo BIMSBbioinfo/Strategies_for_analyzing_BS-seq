@@ -24,7 +24,7 @@ Three different tools were used:
 Functions
 =========
 
-Here are functions to run limma and to run our simulation:
+Here are functions to run limma, DSS and methylKit and calculate sensitivity, specificity and F-score:
 
 <!-- rnb-text-end -->
 ``` r
@@ -46,13 +46,9 @@ source("./functions/limma.R")
 #' @param simOutput this is the output of dataSim2 function
 #' @param sub.methylDiff this is the q-value filtered methylDiff object
 #'                       output of getMethylDiff()
-#' @param methylDiff this is the non-filtered methylDiff object
-#'                   output of calculateDiffMeth() and similar functions
 #' @return returns a vector of accuracy metrics, TP, FP, Sensivity, etc
-calc.rates<-function(simOutput,
-                         sub.methylDiff,
-                         methylDiff # this argument is not needed: TODO remove it to not be confused again
-                         ){
+calc.rates<-function(simOutput, sub.methylDiff){
+  
   all=paste(simOutput[[1]][[1]],simOutput[[1]][[2]],
             simOutput[[1]][[3]])
   
@@ -131,8 +127,7 @@ run.models = function(sim.methylBase, cores=1,
                                        difference=difference,qvalue=qvalue)
     diff.list[[i]] <- methylkit.obj.diff
     methylKit.list[[i]]=calc.rates(sim.methylBase,
-                                       methylkit.obj.diff,
-                                       methylkit.obj)
+                                   methylkit.obj.diff)
     
   }
   names(methylKit.list) <- combined$name
@@ -146,8 +141,7 @@ run.models = function(sim.methylBase, cores=1,
   dss.qvalue.diff = getMethylDiff(dss.qvalue, difference=difference,qvalue=qvalue)
   
   diff.list[["DSS"]]=dss.qvalue.diff
-  methylKit.list[["DSS"]]=calc.rates(sim.methylBase,dss.qvalue.diff,
-                                                dss.qvalue)
+  methylKit.list[["DSS"]]=calc.rates(sim.methylBase, dss.qvalue.diff)
 
   limma.qvalue=limma.meth(sim.methylBase[[1]])
   limma.qvalue.diff = getMethylDiff(limma.qvalue, 
@@ -157,8 +151,7 @@ run.models = function(sim.methylBase, cores=1,
   ## run limma
   diff.list[["limma.qvalue"]] = limma.qvalue.diff
   methylKit.list[["limma.qvalue"]]=calc.rates(sim.methylBase,
-                                                  limma.qvalue.diff,
-                                                  limma.qvalue)
+                                              limma.qvalue.diff)
 
   do.call("rbind",methylKit.list)
 }
