@@ -139,8 +139,8 @@ run.models = function(sim.methylBase, cores=1,
                                     mc.cores=cores)
   dss.qvalue.diff = getMethylDiff(dss.qvalue, difference=difference,qvalue=qvalue)
   
-  diff.list[["DSS"]]=dss.qvalue.diff
-  methylKit.list[["DSS"]]=calc.rates(sim.methylBase, dss.qvalue.diff)
+  diff.list[["DSS.qvalue"]]=dss.qvalue.diff
+  methylKit.list[["DSS.qvalue"]]=calc.rates(sim.methylBase, dss.qvalue.diff)
 
   limma.qvalue=limma.meth(sim.methylBase[[1]])
   limma.qvalue.diff = getMethylDiff(limma.qvalue, 
@@ -152,7 +152,12 @@ run.models = function(sim.methylBase, cores=1,
   methylKit.list[["limma.qvalue"]]=calc.rates(sim.methylBase,
                                               limma.qvalue.diff)
 
-  do.call("rbind",methylKit.list)
+  
+  
+  list(
+    diff.list=diff.list,
+    rates=do.call("rbind",methylKit.list)
+  )
 }
 
 
@@ -194,12 +199,32 @@ for(effect in effects){
   
 }
 
+
+models.res.diff = lapply(models.res, function(x) x$diff.list)
+models.res = lapply(models.res, function(x) x$rates)
+names(models.res) = effects
+names(models.res.diff) = effects
+
+
+# Rename names of models
+# Rename names of tools
+old.v=c("DSS.qvalue", "limma.qvalue","methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN", "methylKit.F.qvalue.none")
+new.v=c("DSS",      "limma"   ,"methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC", "methylKit-Ftest")
+names(new.v) = old.v
+
+
+for( i in 1:length(models.res.diff)){
+    names( models.res.diff[[i]] ) = new.v[ match( names( models.res.diff[[i]] ), old.v ) ]
+    rownames( models.res[[i]] ) = new.v[ match(  rownames( models.res[[i]] ), old.v ) ]
+}
+
+
 ```
 
 
 # Visualisation
 
-The visualisation of sensitivity, specificity and F-score for different effect sizes.
+Visualise sensitivity, specificity and F-score for different effect sizes.
 
 ```{r vis, message=FALSE, warning=FALSE, fig.height=7.5, fig.width=10}
 
@@ -211,28 +236,9 @@ models.res.df = cbind(models.res.df,
                       effect=as.factor(as.numeric(sapply(effects, 
                                                function(x) 
                                                  rep(x, nrow(models.res[[1]])  )))))
-
-# for the publication
-models.res.df$tool = as.character(models.res.df$tool)
-models.res.df = models.res.df[-which(models.res.df$tool=="methylKit.F.qvalue.none"),]
-models.res.df$tool = as.factor(models.res.df$tool)
-
-# Rename names of tools
-levels(models.res.df$tool)[levels(models.res.df$tool)=="DSS.qvalue"] <- "DSS"
-levels(models.res.df$tool)[levels(models.res.df$tool)=="limma.qvalue"] <- "limma"
-levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.Chisq.qvalue.MN"] <- "methylKit-Chisqtest-OC"
-levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.Chisq.qvalue.none"] <- "methylKit-Chisqtest"
-levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.F.qvalue.MN"] <- "methylKit-Ftest-OC"
-# Sort names of tools
-#levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.F.qvalue.none"] <- "methylKit-Ftest"
-#models.res.df$tool=relevel(models.res.df$tool, "methylKit-Ftest")
-models.res.df$tool=relevel(models.res.df$tool, "methylKit-Ftest-OC")
-models.res.df$tool=relevel(models.res.df$tool, "methylKit-Chisqtest-OC")
-models.res.df$tool=relevel(models.res.df$tool, "methylKit-Chisqtest")
-models.res.df$tool=relevel(models.res.df$tool, "limma")
-models.res.df$tool=relevel(models.res.df$tool, "DSS")
-
   
+# 1. Create the plots
+#++++++++++++++++++++++++++++++++++
 
 # A palette
 cbPalette <- c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -251,21 +257,38 @@ p_spec<-ggplot(models.res.df,aes(effect, spec, fill=tool))+
            width=0.65)+
   coord_cartesian(ylim=c(0.0,1.00))+
   scale_fill_manual(values=cbPalette)+
-  labs(y="Specificity", x="Effect size (methylation difference)",fill='Tool')
+  labs(y="Specificity", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
 
 p_recall <- ggplot(models.res.df,aes(effect, recall, fill=tool))+
   geom_bar(stat="identity",position='dodge',colour="black",
            width=0.65)+
   coord_cartesian(ylim=c(0.0,1.00))+
   scale_fill_manual(values=cbPalette)+
-  labs(y="Recall", x="Effect size (methylation difference)",fill='Tool')
+  labs(y="Recall", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
 
 p_fscore <- ggplot(models.res.df,aes(effect, f_score, fill=tool))+
   geom_bar(stat="identity",position='dodge',colour="black",
            width=0.65)+
   coord_cartesian(ylim=c(0.0,1.00))+
   scale_fill_manual(values=cbPalette)+
-  labs(y="F-score", x="Effect size (methylation difference)",fill='Tool')
+  labs(y="F-score", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
+
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+legend <- get_legend(p_sens)
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+p_sens <- p_sens+ theme(legend.position="none")
 
 
 p_sens1 <- arrangeGrob(p_sens, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),
@@ -273,9 +296,70 @@ p_sens1 <- arrangeGrob(p_sens, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "n
 p_spec1 <- arrangeGrob(p_spec, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 
+grid.arrange(p_sens1, p_spec1, p_fscore1, legend, ncol = 2, nrow=2)
 
-grid.arrange(p_sens1, p_spec1, p_fscore1, ncol = 2, nrow=2)
 
+```
+
+
+Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines for different effect sizes:
+
+* 5
+* 10
+* 15
+* 20
+* 25
+
+
+```{r}
+
+
+#' Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines.
+#'
+#' @param list_toolsDMCs list of methylDiff diff objects fom the methylKit library. The list should be named by the tools names.
+#' @param vis boolean indicating whether intersection of DMCs between given tools will be visualizated using UpSetR::upset function.
+#'
+#' @return a matrix with first column that indicate positions of DMCs and other columns presence or absence of the DMCs from given tools.
+plot.intersetion.tools = function(list_toolsDMCs, vis=TRUE){
+  
+  require(dplyr)
+  require(tidyr)
+  
+  DMCs2char = lapply(list_toolsDMCs, function(x){
+    paste0( x$chr,x$start,x$end )
+  })
+
+  charDMCs2df = lapply(1:length(DMCs2char), 
+                   function(j){
+                     # if there are DCs
+                     if(length(DMCs2char[[j]])!=0){
+                       data.frame(tool=names(DMCs2char)[j], pos=DMCs2char[[j]])
+                     }
+                   })
+  d = do.call('rbind',charDMCs2df)
+  binary_matrix <- d %>% mutate(value =1) %>% spread(tool, value, fill = 0 )
+  
+  if(vis){
+    require(UpSetR)
+    upset(binary_matrix, 
+          order.by = "freq",
+          mainbar.y.label = "DMCs Intersections",
+          sets.x.label = "Set size"
+    )
+  }
+  
+  return( invisible(binary_matrix) )
+}
+
+plot.intersetion.tools(models.res.diff[['5']])
+
+plot.intersetion.tools(models.res.diff[['10']])
+
+plot.intersetion.tools(models.res.diff[['15']])
+
+plot.intersetion.tools(models.res.diff[['20']])
+
+plot.intersetion.tools(models.res.diff[['25']])
 
 ```
 
@@ -283,4 +367,6 @@ grid.arrange(p_sens1, p_spec1, p_fscore1, ncol = 2, nrow=2)
 ```{r}
 sessionInfo()
 ```
+
+
 

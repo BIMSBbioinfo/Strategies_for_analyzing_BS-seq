@@ -1,11 +1,8 @@
 The comparison of differentially methylated bases detection tools on simulated data
 ================
 Katarzyna Wreczycka
-2017-07-26
+2017-07-28
 
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-text-begin -->
 Goal
 ====
 
@@ -26,7 +23,6 @@ Functions
 
 Here are functions to run limma, DSS and methylKit and calculate sensitivity, specificity and F-score:
 
-<!-- rnb-text-end -->
 ``` r
 # Load libraries and functions
 library("methylKit")
@@ -37,8 +33,6 @@ source("./functions/dataSim2.R")
 source("./functions/limma.R")
 ```
 
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
 ``` r
 
 #' Calculate rates of models compared to simulation
@@ -140,8 +134,8 @@ run.models = function(sim.methylBase, cores=1,
                                     mc.cores=cores)
   dss.qvalue.diff = getMethylDiff(dss.qvalue, difference=difference,qvalue=qvalue)
   
-  diff.list[["DSS"]]=dss.qvalue.diff
-  methylKit.list[["DSS"]]=calc.rates(sim.methylBase, dss.qvalue.diff)
+  diff.list[["DSS.qvalue"]]=dss.qvalue.diff
+  methylKit.list[["DSS.qvalue"]]=calc.rates(sim.methylBase, dss.qvalue.diff)
 
   limma.qvalue=limma.meth(sim.methylBase[[1]])
   limma.qvalue.diff = getMethylDiff(limma.qvalue, 
@@ -153,21 +147,24 @@ run.models = function(sim.methylBase, cores=1,
   methylKit.list[["limma.qvalue"]]=calc.rates(sim.methylBase,
                                               limma.qvalue.diff)
 
-  do.call("rbind",methylKit.list)
+  
+  
+  list(
+    diff.list=diff.list,
+    rates=do.call("rbind",methylKit.list)
+  )
 }
 ```
 
-<!-- rnb-text-begin -->
 Simulation
 ==========
 
-We simulated a dataset consisting of 6 samples (3 controls and 3 samples with treatment). The read coverage modeled by a binomial distribution. The methylation background followed a beta distribution with parameters \(alpha=0.4\), \(beta=0.5\) and \(theta=10\). We simulated 6 sets of 5000 CpG sites where methylation at 50% of the sites was affected by the treatment to varying degrees - specifically, methylation was elevated by 5%, 10%, 15%, 20% and 25% in the test sample respectively in each set.
+We simulated a dataset consisting of 6 samples (3 controls and 3 samples with treatment). The read coverage modeled by a binomial distribution. The methylation background followed a beta distribution with parameters *a**l**p**h**a* = 0.4, *b**e**t**a* = 0.5 and *t**h**e**t**a* = 10. We simulated 6 sets of 5000 CpG sites where methylation at 50% of the sites was affected by the treatment to varying degrees - specifically, methylation was elevated by 5%, 10%, 15%, 20% and 25% in the test sample respectively in each set.
 
 To adjust p-values for multiple testing, we used q-value method and we defined differentially methylated CpG sites with q-values below 0.01 for all examined methods. We calculated sensitivity, specificity and F-score for each of the three methods above. Sensitivity measured the proportion of true differentially methylated CpGs that were correctly identified as such, specificity was calculated as the proportion of detected CpGs that were truly not differentially methylated and correctly identified as such and F-score refers to a way to measure sensitivity and specificity by calculating their harmonic mean.
 
 Here, we calculate sensitivity, specificity and F-score of performance of tools for calling differentially methylated cytosines:
 
-<!-- rnb-text-end -->
 ``` r
 
 # variables
@@ -195,9 +192,6 @@ for(effect in effects){
   
 }
 ## [1] 5
-## Loading required package: DSS
-## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-## logical.return = TRUE, : there is no package called 'DSS'
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
@@ -212,9 +206,6 @@ for(effect in effects){
 ## treatment (group: 1) - control (group: 0)
 ## Using internal DSS code... 
 ## [1] 10
-## Loading required package: DSS
-## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-## logical.return = TRUE, : there is no package called 'DSS'
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
@@ -229,9 +220,6 @@ for(effect in effects){
 ## treatment (group: 1) - control (group: 0)
 ## Using internal DSS code... 
 ## [1] 15
-## Loading required package: DSS
-## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-## logical.return = TRUE, : there is no package called 'DSS'
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
@@ -246,9 +234,6 @@ for(effect in effects){
 ## treatment (group: 1) - control (group: 0)
 ## Using internal DSS code... 
 ## [1] 20
-## Loading required package: DSS
-## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-## logical.return = TRUE, : there is no package called 'DSS'
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
@@ -263,9 +248,6 @@ for(effect in effects){
 ## treatment (group: 1) - control (group: 0)
 ## Using internal DSS code... 
 ## [1] 25
-## Loading required package: DSS
-## Warning in library(package, lib.loc = lib.loc, character.only = TRUE,
-## logical.return = TRUE, : there is no package called 'DSS'
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
@@ -279,15 +261,32 @@ for(effect in effects){
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
 ## Using internal DSS code...
+
+
+models.res.diff = lapply(models.res, function(x) x$diff.list)
+models.res = lapply(models.res, function(x) x$rates)
+names(models.res) = effects
+names(models.res.diff) = effects
+
+
+# Rename names of models
+# Rename names of tools
+old.v=c("DSS.qvalue", "limma.qvalue","methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN", "methylKit.F.qvalue.none")
+new.v=c("DSS",      "limma"   ,"methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC", "methylKit-Ftest")
+names(new.v) = old.v
+
+
+for( i in 1:length(models.res.diff)){
+    names( models.res.diff[[i]] ) = new.v[ match( names( models.res.diff[[i]] ), old.v ) ]
+    rownames( models.res[[i]] ) = new.v[ match(  rownames( models.res[[i]] ), old.v ) ]
+}
 ```
 
-<!-- rnb-text-begin -->
 Visualisation
 =============
 
-The visualisation of sensitivity, specificity and F-score for different effect sizes.
+Visualise sensitivity, specificity and F-score for different effect sizes.
 
-<!-- rnb-text-end -->
 ``` r
 
 # Convert list of matrices to a data.frame
@@ -298,28 +297,9 @@ models.res.df = cbind(models.res.df,
                       effect=as.factor(as.numeric(sapply(effects, 
                                                function(x) 
                                                  rep(x, nrow(models.res[[1]])  )))))
-
-# for the publication
-models.res.df$tool = as.character(models.res.df$tool)
-models.res.df = models.res.df[-which(models.res.df$tool=="methylKit.F.qvalue.none"),]
-models.res.df$tool = as.factor(models.res.df$tool)
-
-# Rename names of tools
-levels(models.res.df$tool)[levels(models.res.df$tool)=="DSS.qvalue"] <- "DSS"
-levels(models.res.df$tool)[levels(models.res.df$tool)=="limma.qvalue"] <- "limma"
-levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.Chisq.qvalue.MN"] <- "methylKit-Chisqtest-OC"
-levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.Chisq.qvalue.none"] <- "methylKit-Chisqtest"
-levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.F.qvalue.MN"] <- "methylKit-Ftest-OC"
-# Sort names of tools
-#levels(models.res.df$tool)[levels(models.res.df$tool)=="methylKit.F.qvalue.none"] <- "methylKit-Ftest"
-#models.res.df$tool=relevel(models.res.df$tool, "methylKit-Ftest")
-models.res.df$tool=relevel(models.res.df$tool, "methylKit-Ftest-OC")
-models.res.df$tool=relevel(models.res.df$tool, "methylKit-Chisqtest-OC")
-models.res.df$tool=relevel(models.res.df$tool, "methylKit-Chisqtest")
-models.res.df$tool=relevel(models.res.df$tool, "limma")
-models.res.df$tool=relevel(models.res.df$tool, "DSS")
-
   
+# 1. Create the plots
+#++++++++++++++++++++++++++++++++++
 
 # A palette
 cbPalette <- c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -338,21 +318,38 @@ p_spec<-ggplot(models.res.df,aes(effect, spec, fill=tool))+
            width=0.65)+
   coord_cartesian(ylim=c(0.0,1.00))+
   scale_fill_manual(values=cbPalette)+
-  labs(y="Specificity", x="Effect size (methylation difference)",fill='Tool')
+  labs(y="Specificity", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
 
 p_recall <- ggplot(models.res.df,aes(effect, recall, fill=tool))+
   geom_bar(stat="identity",position='dodge',colour="black",
            width=0.65)+
   coord_cartesian(ylim=c(0.0,1.00))+
   scale_fill_manual(values=cbPalette)+
-  labs(y="Recall", x="Effect size (methylation difference)",fill='Tool')
+  labs(y="Recall", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
 
 p_fscore <- ggplot(models.res.df,aes(effect, f_score, fill=tool))+
   geom_bar(stat="identity",position='dodge',colour="black",
            width=0.65)+
   coord_cartesian(ylim=c(0.0,1.00))+
   scale_fill_manual(values=cbPalette)+
-  labs(y="F-score", x="Effect size (methylation difference)",fill='Tool')
+  labs(y="F-score", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
+
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+legend <- get_legend(p_sens)
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+p_sens <- p_sens+ theme(legend.position="none")
 
 
 p_sens1 <- arrangeGrob(p_sens, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),
@@ -361,22 +358,102 @@ p_spec1 <- arrangeGrob(p_spec, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "n
 p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 
 
-grid.arrange(p_sens1, p_spec1, p_fscore1, ncol = 2, nrow=2)
+#grid.arrange(p_sens1, p_spec1, p_fscore1, ncol = 2, nrow=2)
+grid.arrange(p_sens1, p_spec1, p_fscore1, legend, ncol = 2, nrow=2)
 ```
 
 <img src="diff_meth_figs/diff_meth-vis-1.png" width="960" />
 
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
+Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines for different effect sizes:
+
+-   5
+-   10
+-   15
+-   20
+-   25
+
+``` r
+
+
+#' Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines.
+#'
+#' @param list_toolsDMCs list of methylDiff diff objects fom the methylKit library. The list should be named by the tools names.
+#' @param vis boolean indicating whether intersection of DMCs between given tools will be visualizated using UpSetR::upset function.
+#'
+#' @return a matrix with first column that indicate positions of DMCs and other columns presence or absence of the DMCs from given tools.
+plot.intersetion.tools = function(list_toolsDMCs, vis=TRUE){
+  
+  require(dplyr)
+  require(tidyr)
+  
+  DMCs2char = lapply(list_toolsDMCs, function(x){
+    paste0( x$chr,x$start,x$end )
+  })
+
+  charDMCs2df = lapply(1:length(DMCs2char), 
+                   function(j){
+                     # if there are DCs
+                     if(length(DMCs2char[[j]])!=0){
+                       data.frame(tool=names(DMCs2char)[j], pos=DMCs2char[[j]])
+                     }
+                   })
+  d = do.call('rbind',charDMCs2df)
+  binary_matrix <- d %>% mutate(value =1) %>% spread(tool, value, fill = 0 )
+  
+  if(vis){
+    require(UpSetR)
+    upset(binary_matrix, 
+          order.by = "freq",
+          mainbar.y.label = "DMCs Intersections",
+          sets.x.label = "Set size"
+    )
+  }
+  
+  return( invisible(binary_matrix) )
+}
+
+plot.intersetion.tools(models.res.diff[['5']])
+```
+
+<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-1.png" width="672" />
+
+``` r
+
+plot.intersetion.tools(models.res.diff[['10']])
+```
+
+<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-2.png" width="672" />
+
+``` r
+
+plot.intersetion.tools(models.res.diff[['15']])
+```
+
+<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-3.png" width="672" />
+
+``` r
+
+plot.intersetion.tools(models.res.diff[['20']])
+```
+
+<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-4.png" width="672" />
+
+``` r
+
+plot.intersetion.tools(models.res.diff[['25']])
+```
+
+<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-5.png" width="672" />
+
 ``` r
 sessionInfo()
-## R version 3.4.0 (2017-04-21)
+## R version 3.4.1 (2017-06-30)
 ## Platform: x86_64-pc-linux-gnu (64-bit)
-## Running under: Ubuntu 16.04.1 LTS
+## Running under: CentOS Linux 7 (Core)
 ## 
 ## Matrix products: default
-## BLAS: /usr/lib/libblas/libblas.so.3.6.0
-## LAPACK: /usr/lib/lapack/liblapack.so.3.6.0
+## BLAS: /home/kwreczy/programs/R-3.4.1/lib64/R/lib/libRblas.so
+## LAPACK: /home/kwreczy/programs/R-3.4.1/lib64/R/lib/libRlapack.so
 ## 
 ## locale:
 ##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
@@ -387,45 +464,48 @@ sessionInfo()
 ## [11] LC_MEASUREMENT=de_DE.UTF-8 LC_IDENTIFICATION=C       
 ## 
 ## attached base packages:
-##  [1] grid      parallel  stats4    stats     graphics  grDevices utils    
-##  [8] datasets  methods   base     
+##  [1] splines   grid      parallel  stats4    stats     graphics  grDevices
+##  [8] utils     datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] gridExtra_2.2.1      ggplot2_2.2.1        qvalue_2.8.0        
-##  [4] limma_3.32.3         emdbook_1.3.9        methylKit_1.3.3     
-##  [7] GenomicRanges_1.28.4 GenomeInfoDb_1.12.2  IRanges_2.10.2      
-## [10] S4Vectors_0.14.3     BiocGenerics_0.22.0  rmarkdown_1.6       
+##  [1] rmarkdown_1.6              UpSetR_1.3.3              
+##  [3] tidyr_0.6.3                dplyr_0.7.2               
+##  [5] plyr_1.8.4                 qvalue_2.8.0              
+##  [7] limma_3.32.3               DSS_2.16.0                
+##  [9] bsseq_1.12.2               SummarizedExperiment_1.6.3
+## [11] DelayedArray_0.2.7         matrixStats_0.52.2        
+## [13] Biobase_2.36.2             emdbook_1.3.9             
+## [15] gridExtra_2.2.1            ggplot2_2.2.1             
+## [17] methylKit_1.3.3            GenomicRanges_1.28.4      
+## [19] GenomeInfoDb_1.12.2        IRanges_2.10.2            
+## [21] S4Vectors_0.14.3           BiocGenerics_0.22.0       
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] SummarizedExperiment_1.6.3 gtools_3.5.0              
-##  [3] reshape2_1.4.2             splines_3.4.0             
-##  [5] lattice_0.20-34            tcltk_3.4.0               
-##  [7] colorspace_1.3-2           htmltools_0.3.6           
-##  [9] rtracklayer_1.36.4         yaml_2.1.14               
-## [11] base64enc_0.1-3            XML_3.98-1.9              
-## [13] rlang_0.1.1                R.oo_1.21.0               
-## [15] R.utils_2.5.0              BiocParallel_1.10.1       
-## [17] fastseg_1.22.0             matrixStats_0.52.2        
-## [19] GenomeInfoDbData_0.99.0    plyr_1.8.4                
-## [21] stringr_1.2.0              zlibbioc_1.22.0           
-## [23] Biostrings_2.44.1          munsell_0.4.3             
-## [25] gtable_0.2.0               R.methodsS3_1.7.1         
-## [27] coda_0.19-1                evaluate_0.10.1           
-## [29] labeling_0.3               Biobase_2.36.2            
-## [31] knitr_1.16                 Rcpp_0.12.12              
-## [33] scales_0.4.1               backports_1.1.0           
-## [35] DelayedArray_0.2.7         jsonlite_1.5              
-## [37] XVector_0.16.0             Rsamtools_1.28.0          
-## [39] digest_0.6.12              stringi_1.1.5             
-## [41] numDeriv_2016.8-1          rprojroot_1.2             
-## [43] tools_3.4.0                bitops_1.0-6              
-## [45] bbmle_1.0.19               magrittr_1.5              
-## [47] lazyeval_0.2.0             RCurl_1.95-4.8            
-## [49] tibble_1.3.3               MASS_7.3-45               
-## [51] Matrix_1.2-7.1             data.table_1.10.4         
-## [53] mclust_5.3                 GenomicAlignments_1.12.1  
-## [55] compiler_3.4.0
+##  [1] mclust_5.3               Rcpp_0.12.12            
+##  [3] locfit_1.5-9.1           lattice_0.20-35         
+##  [5] Rsamtools_1.28.0         Biostrings_2.44.1       
+##  [7] gtools_3.5.0             rprojroot_1.2           
+##  [9] assertthat_0.2.0         digest_0.6.12           
+## [11] R6_2.2.2                 backports_1.1.0         
+## [13] evaluate_0.10.1          coda_0.19-1             
+## [15] zlibbioc_1.22.0          rlang_0.1.1             
+## [17] lazyeval_0.2.0           data.table_1.10.4       
+## [19] R.utils_2.5.0            R.oo_1.21.0             
+## [21] Matrix_1.2-10            bbmle_1.0.19            
+## [23] labeling_0.3             BiocParallel_1.10.1     
+## [25] stringr_1.2.0            fastseg_1.22.0          
+## [27] RCurl_1.95-4.8           munsell_0.4.3           
+## [29] compiler_3.4.1           numDeriv_2016.8-1       
+## [31] rtracklayer_1.36.4       pkgconfig_2.0.1         
+## [33] htmltools_0.3.6          tibble_1.3.3            
+## [35] GenomeInfoDbData_0.99.0  XML_3.98-1.9            
+## [37] permute_0.9-4            GenomicAlignments_1.12.1
+## [39] MASS_7.3-47              bitops_1.0-6            
+## [41] R.methodsS3_1.7.1        gtable_0.2.0            
+## [43] magrittr_1.5             scales_0.4.1            
+## [45] stringi_1.1.5            XVector_0.16.0          
+## [47] reshape2_1.4.2           bindrcpp_0.2            
+## [49] tools_3.4.1              glue_1.1.1              
+## [51] yaml_2.1.14              colorspace_1.3-2        
+## [53] knitr_1.16               bindr_0.1
 ```
-
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
