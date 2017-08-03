@@ -6,7 +6,7 @@ date: "`r Sys.Date()`"
 ---
 
 ```{r, echo = FALSE}
-knitr::opts_chunk$set(collapse=TRUE, comment="##", fig.retina=2, fig.path = "diff_meth_figs/diff_meth-")
+knitr::opts_chunk$set(collapse=TRUE, comment="##", fig.retina=2, fig.path = "diff_meth_figs/diff_meth-sim-")
 ```
 
 # Goal
@@ -31,6 +31,7 @@ Here are functions to run limma, DSS and methylKit and calculate sensitivity, sp
 # Load libraries and functions
 library("methylKit")
 library(ggplot2)
+library(reshape2)
 library(gridExtra)
 library(grid)
 source("./functions/dataSim2.R")
@@ -142,17 +143,34 @@ run.models = function(sim.methylBase, cores=1,
   diff.list[["DSS.qvalue"]]=dss.qvalue.diff
   methylKit.list[["DSS.qvalue"]]=calc.rates(sim.methylBase, dss.qvalue.diff)
 
+  ## run limma
   limma.qvalue=limma.meth(sim.methylBase[[1]])
   limma.qvalue.diff = getMethylDiff(limma.qvalue, 
                                     difference=difference,qvalue=qvalue)
-  
-  
-  ## run limma
   diff.list[["limma.qvalue"]] = limma.qvalue.diff
   methylKit.list[["limma.qvalue"]]=calc.rates(sim.methylBase,
                                               limma.qvalue.diff)
-
   
+  limma.qvalue.tTrT=limma.meth(sim.methylBase[[1]], trend=TRUE, robust=TRUE)
+  limma.qvalue.diff.tTrT = getMethylDiff(limma.qvalue.tTrT, 
+                                    difference=difference,qvalue=qvalue)
+  diff.list[["limma.qvalue.trendTrobustT"]] = limma.qvalue.diff.tTrT
+  methylKit.list[["limma.qvalue.trendTrobustT"]]=calc.rates(sim.methylBase,
+                                              limma.qvalue.diff.tTrT)
+
+  limma.qvalue.tTrF=limma.meth(sim.methylBase[[1]], trend=TRUE, robust=FALSE)
+  limma.qvalue.diff.tTrF = getMethylDiff(limma.qvalue.tTrF, 
+                                    difference=difference,qvalue=qvalue)
+  diff.list[["limma.qvalue.trendTrobustF"]] = limma.qvalue.diff.tTrF
+  methylKit.list[["limma.qvalue.trendTrobustF"]]=calc.rates(sim.methylBase,
+                                              limma.qvalue.diff.tTrF)
+  
+  limma.qvalue.tFrT=limma.meth(sim.methylBase[[1]], trend=FALSE, robust=TRUE)
+  limma.qvalue.diff.tFrT = getMethylDiff(limma.qvalue.tFrT, 
+                                    difference=difference,qvalue=qvalue)
+  diff.list[["limma.qvalue.trendFrobustT"]] = limma.qvalue.diff.tFrT
+  methylKit.list[["limma.qvalue.trendFrobustT"]]=calc.rates(sim.methylBase,
+                                              limma.qvalue.diff.tFrT)
   
   list(
     diff.list=diff.list,
@@ -200,23 +218,10 @@ for(effect in effects){
 }
 
 
-models.res.diff = lapply(models.res, function(x) x$diff.list)
-models.res = lapply(models.res, function(x) x$rates)
-names(models.res) = effects
-names(models.res.diff) = effects
-
-
-# Rename names of models
-# Rename names of tools
-old.v=c("DSS.qvalue", "limma.qvalue","methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN", "methylKit.F.qvalue.none")
-new.v=c("DSS",      "limma"   ,"methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC", "methylKit-Ftest")
-names(new.v) = old.v
-
-
-for( i in 1:length(models.res.diff)){
-    names( models.res.diff[[i]] ) = new.v[ match( names( models.res.diff[[i]] ), old.v ) ]
-    rownames( models.res[[i]] ) = new.v[ match(  rownames( models.res[[i]] ), old.v ) ]
-}
+models.res.diff.orig = lapply(models.res, function(x) x$diff.list)
+models.res.orig = lapply(models.res, function(x) x$rates)
+names(models.res.orig) = effects
+names(models.res.diff.orig) = effects
 
 
 ```
@@ -226,7 +231,12 @@ for( i in 1:length(models.res.diff)){
 
 Visualise sensitivity, specificity and F-score for different effect sizes.
 
-```{r vis, message=FALSE, warning=FALSE, fig.height=7.5, fig.width=10}
+Limma performs the worst in comparison to DSS and methylKit. Therefore, to ensure that it has the best performance possible, we compared its performance after using combination of different input arguments.
+
+```{r, message=FALSE, warning=FALSE, fig.height=6, fig.width=15}
+
+models.res=models.res.orig
+models.res.diff=models.res.diff.orig
 
 # Convert list of matrices to a data.frame
 models.res.ma = do.call("rbind", models.res)
@@ -236,12 +246,29 @@ models.res.df = cbind(models.res.df,
                       effect=as.factor(as.numeric(sapply(effects, 
                                                function(x) 
                                                  rep(x, nrow(models.res[[1]])  )))))
-  
-# 1. Create the plots
+
+# Plot the True/false positives/negatives that were computed
+msel = models.res.df[,c('TP','FN','FP','TN','tool', 'effect')]
+mseldat <- melt(msel, id.vars=c("tool","effect"))
+metrics = ggplot(mseldat, aes(variable, value, fill=tool)) + 
+  geom_bar(stat="identity", position="dodge",colour="black",
+           width=0.65)+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Number", x="Metric",fill='Tool')+
+  facet_wrap(~effect, nrow=1)+
+  theme(legend.position = "none")
+
+```
+
+
+```{r, message=FALSE, warning=FALSE, fig.height=10, fig.width=10}
+
+
+# 1. Create the plots for sensitivity, specificity and F-score
 #++++++++++++++++++++++++++++++++++
 
 # A palette
-cbPalette <- c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+cbPalette <- c( "#E69F00", "#CC79A7", "#CC79A7", "#CC79A7","#CC79A7","#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 p_sens<-ggplot(models.res.df,aes(effect, sens, fill=tool))+
   geom_bar(stat="identity",position='dodge',colour="black",
@@ -291,13 +318,175 @@ legend <- get_legend(p_sens)
 p_sens <- p_sens+ theme(legend.position="none")
 
 
+p_metrics1 <- arrangeGrob(metrics, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),
+                                               just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+  
+p_sens1 <- arrangeGrob(p_sens, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "npc"),
+                                               just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_spec1 <- arrangeGrob(p_spec, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("d", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+
+grid.arrange(p_metrics1,
+             p_sens1, p_spec1,
+             p_fscore1, legend,
+             ncol = 2, nrow=3,
+             layout_matrix = rbind(c(1,1),c(2,3), c(4,5)),
+             widths=c(1,1))
+
+
+```
+
+Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines for different effect sizes:
+
+* 5
+* 10
+* 15
+* 20
+* 25
+
+```{r}
+
+source("./functions/vis.R")
+
+names_sets = rev(sort(as.character(levels(models.res.df$tool)))) # to plot tools in the same order as in barplots
+
+plot.intersetion.tools(models.res.diff[['5']], vis=TRUE, keep.order=TRUE, sets = names_sets)
+
+plot.intersetion.tools(models.res.diff[['10']], vis=TRUE, keep.order = TRUE, sets = names_sets)
+
+plot.intersetion.tools(models.res.diff[['15']], vis=TRUE, keep.order = TRUE, sets = names_sets)
+
+plot.intersetion.tools(models.res.diff[['20']], vis=TRUE, keep.order = TRUE, sets = names_sets)
+
+plot.intersetion.tools(models.res.diff[['25']], vis=TRUE, keep.order=TRUE, sets = names_sets)
+
+
+
+```
+
+
+# Results
+
+Visualise sensitivity, specificity and F-score for different effect sizes.
+
+Limma performs very similar for all combinations of input argument trend=TRUE/FALSE and robust=TRUE/FALSE and we here 
+chose trend=TRUE and robust=TRUE. methylKit with F-test was removed since it performs almost identical to methylKit with Chisq test.
+
+```{r vis, message=FALSE, warning=FALSE, fig.height=10, fig.width=10}
+
+models.res.diff=models.res.diff.orig
+models.res=models.res.orig
+
+wh.exlc = which(names( models.res.diff[[1]] ) %in% c("methylKit.F.qvalue.none","limma.qvalue","limma.qvalue.trendTrobustF","limma.qvalue.trendFrobustT"))
+for( i in 1:length(models.res.diff)){
+    models.res.diff[[i]] = models.res.diff[[i]][-wh.exlc]
+    models.res[[i]] = models.res[[i]][-wh.exlc,]
+}
+
+# Rename names of tools
+old.v=c("DSS.qvalue", "limma.qvalue.trendTrobustT","methylKit.F.qvalue.none", "methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN", "methylKit.F.qvalue.none")
+new.v=c("DSS",      "limma"   ,"methylKit-Ftest", "methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC", "methylKit-Ftest")
+names(new.v) = old.v
+
+for( i in 1:length(models.res.diff)){
+    names( models.res.diff[[i]] ) = new.v[ match( names( models.res.diff[[i]] ), old.v ) ]
+    rownames( models.res[[i]] ) = new.v[ match(  rownames( models.res[[i]] ), old.v ) ]
+}
+
+# Convert list of matrices to a data.frame
+models.res.ma = do.call("rbind", models.res)
+models.res.df = data.frame(models.res.ma)
+models.res.df = cbind(models.res.df, 
+                      tool=rownames(models.res.ma),
+                      effect=as.factor(as.numeric(sapply(effects, 
+                                               function(x) 
+                                                 rep(x, nrow(models.res[[1]])  )))))
+  
+
+# Plot the True/false positives/negatives that were computed
+cbPalette <- c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+msel = models.res.df[,c('TP','FN','FP','TN','tool', 'effect')]
+mseldat <- melt(msel, id.vars=c("tool","effect"))
+metrics = ggplot(mseldat, aes(variable, value, fill=tool)) + 
+  geom_bar(stat="identity", position="dodge",colour="black",
+           width=0.65)+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Number", x="Metric",fill='Tool')+
+  facet_wrap(~effect, nrow=1)
+#  theme(legend.position = "none")
+
+#pdf("./figs_publication/simulated_metrics.pdf", width = 10, height = 3)
+plot(metrics)
+#dev.off()
+
+
+
+# 1. Create the plots the plots for sensitivity, specificity and F-score
+#++++++++++++++++++++++++++++++++++
+
+# A palette
+cbPalette <- c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+p_sens<-ggplot(models.res.df,aes(effect, sens, fill=tool))+
+  geom_bar(stat="identity",position='dodge',colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Sensitivity", x="Effect size (methylation difference)",fill='Tool')
+  
+
+p_spec<-ggplot(models.res.df,aes(effect, spec, fill=tool))+
+  geom_bar(stat="identity",
+           position="dodge",
+           colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Specificity", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
+
+p_recall <- ggplot(models.res.df,aes(effect, recall, fill=tool))+
+  geom_bar(stat="identity",position='dodge',colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Recall", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
+
+p_fscore <- ggplot(models.res.df,aes(effect, f_score, fill=tool))+
+  geom_bar(stat="identity",position='dodge',colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="F-score", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
+
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+legend <- get_legend(p_sens)
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+p_sens <- p_sens+ theme(legend.position="none")
+
+
 p_sens1 <- arrangeGrob(p_sens, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),
                                               just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 p_spec1 <- arrangeGrob(p_spec, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 
 
-grid.arrange(p_sens1, p_spec1, p_fscore1, legend, ncol = 2, nrow=2)
+#pdf("./figs_publication/simulated_rates.pdf", width = 10, height = 7)
+grid.arrange(p_sens1, p_spec1,
+             p_fscore1, legend,
+             ncol = 2, nrow=2)
+#dev.off()
 
 
 ```
@@ -311,56 +500,46 @@ Visualise intersections between DMCs from given tools for calling differentiall 
 * 20
 * 25
 
-
 ```{r}
 
+source("./functions/vis.R")
 
-#' Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines.
-#'
-#' @param list_toolsDMCs list of methylDiff diff objects fom the methylKit library. The list should be named by the tools names.
-#' @param vis boolean indicating whether intersection of DMCs between given tools will be visualizated using UpSetR::upset function.
-#'
-#' @return a matrix with first column that indicate positions of DMCs and other columns presence or absence of the DMCs from given tools.
-plot.intersetion.tools = function(list_toolsDMCs, vis=TRUE){
-  
-  require(dplyr)
-  require(tidyr)
-  
-  DMCs2char = lapply(list_toolsDMCs, function(x){
-    paste0( x$chr,x$start,x$end )
-  })
+#pdf("./figs_publication/plot.intersetion.tool.pdf", width = 10, height = 5)
 
-  charDMCs2df = lapply(1:length(DMCs2char), 
-                   function(j){
-                     # if there are DCs
-                     if(length(DMCs2char[[j]])!=0){
-                       data.frame(tool=names(DMCs2char)[j], pos=DMCs2char[[j]])
-                     }
-                   })
-  d = do.call('rbind',charDMCs2df)
-  binary_matrix <- d %>% mutate(value =1) %>% spread(tool, value, fill = 0 )
-  
-  if(vis){
-    require(UpSetR)
-    upset(binary_matrix, 
-          order.by = "freq",
-          mainbar.y.label = "DMCs Intersections",
-          sets.x.label = "Set size"
-    )
-  }
-  
-  return( invisible(binary_matrix) )
-}
+names_sets = rev(sort(as.character(levels(models.res.df$tool)))) # to plot tools in the same order as in barplots
 
-plot.intersetion.tools(models.res.diff[['5']])
+plot.intersetion.tools(models.res.diff[['5']], 
+                       vis=TRUE, keep.order=TRUE, sets = names_sets, 
+                       text.scale=c(2, 2, 2, 1.5, 2, 2.4),
+                       set.metadata = list(type = "matrix_rows", 
+                                           column = "Tools", colors = mycol, 
+                                           alpha = 0.5))
 
-plot.intersetion.tools(models.res.diff[['10']])
 
-plot.intersetion.tools(models.res.diff[['15']])
+mycol = c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
+names(mycol) = names_sets
 
-plot.intersetion.tools(models.res.diff[['20']])
+cbPalette
+set.metadata = list(type = "matrix_rows", 
+column = "Tools", colors = cols, 
+alpha = 0.5)
 
-plot.intersetion.tools(models.res.diff[['25']])
+plot.intersetion.tools(models.res.diff[['10']], 
+                       vis=TRUE, keep.order = TRUE, sets = names_sets, 
+                       text.scale=c(2, 2, 2, 1.5, 2, 2.4),
+                       set.metadata = list(type = "matrix_rows", 
+                                           column = "Tools", colors = mycol, 
+                                           alpha = 0.5)
+                       )
+
+plot.intersetion.tools(models.res.diff[['15']], vis=TRUE, keep.order = TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
+
+plot.intersetion.tools(models.res.diff[['20']], vis=TRUE, keep.order = TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
+
+plot.intersetion.tools(models.res.diff[['25']], vis=TRUE, keep.order=TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
+
+#dev.off()
+
 
 ```
 

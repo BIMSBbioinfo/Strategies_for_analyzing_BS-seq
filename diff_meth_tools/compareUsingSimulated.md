@@ -1,7 +1,7 @@
 The comparison of differentially methylated bases detection tools on simulated data
 ================
 Katarzyna Wreczycka
-2017-07-28
+2017-08-03
 
 Goal
 ====
@@ -27,6 +27,7 @@ Here are functions to run limma, DSS and methylKit and calculate sensitivity, sp
 # Load libraries and functions
 library("methylKit")
 library(ggplot2)
+library(reshape2)
 library(gridExtra)
 library(grid)
 source("./functions/dataSim2.R")
@@ -137,17 +138,34 @@ run.models = function(sim.methylBase, cores=1,
   diff.list[["DSS.qvalue"]]=dss.qvalue.diff
   methylKit.list[["DSS.qvalue"]]=calc.rates(sim.methylBase, dss.qvalue.diff)
 
+  ## run limma
   limma.qvalue=limma.meth(sim.methylBase[[1]])
   limma.qvalue.diff = getMethylDiff(limma.qvalue, 
                                     difference=difference,qvalue=qvalue)
-  
-  
-  ## run limma
   diff.list[["limma.qvalue"]] = limma.qvalue.diff
   methylKit.list[["limma.qvalue"]]=calc.rates(sim.methylBase,
                                               limma.qvalue.diff)
-
   
+  limma.qvalue.tTrT=limma.meth(sim.methylBase[[1]], trend=TRUE, robust=TRUE)
+  limma.qvalue.diff.tTrT = getMethylDiff(limma.qvalue.tTrT, 
+                                    difference=difference,qvalue=qvalue)
+  diff.list[["limma.qvalue.trendTrobustT"]] = limma.qvalue.diff.tTrT
+  methylKit.list[["limma.qvalue.trendTrobustT"]]=calc.rates(sim.methylBase,
+                                              limma.qvalue.diff.tTrT)
+
+  limma.qvalue.tTrF=limma.meth(sim.methylBase[[1]], trend=TRUE, robust=FALSE)
+  limma.qvalue.diff.tTrF = getMethylDiff(limma.qvalue.tTrF, 
+                                    difference=difference,qvalue=qvalue)
+  diff.list[["limma.qvalue.trendTrobustF"]] = limma.qvalue.diff.tTrF
+  methylKit.list[["limma.qvalue.trendTrobustF"]]=calc.rates(sim.methylBase,
+                                              limma.qvalue.diff.tTrF)
+  
+  limma.qvalue.tFrT=limma.meth(sim.methylBase[[1]], trend=FALSE, robust=TRUE)
+  limma.qvalue.diff.tFrT = getMethylDiff(limma.qvalue.tFrT, 
+                                    difference=difference,qvalue=qvalue)
+  diff.list[["limma.qvalue.trendFrobustT"]] = limma.qvalue.diff.tFrT
+  methylKit.list[["limma.qvalue.trendFrobustT"]]=calc.rates(sim.methylBase,
+                                              limma.qvalue.diff.tFrT)
   
   list(
     diff.list=diff.list,
@@ -204,7 +222,10 @@ for(effect in effects){
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
-## Using internal DSS code... 
+## Using internal DSS code...
+## Warning: 461 very small variances detected, have been offset away from zero
+
+## Warning: 461 very small variances detected, have been offset away from zero
 ## [1] 10
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
@@ -218,7 +239,9 @@ for(effect in effects){
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
-## Using internal DSS code... 
+## Using internal DSS code...
+## Warning: 459 very small variances detected, have been offset away from zero
+## Warning: 459 very small variances detected, have been offset away from zero
 ## [1] 15
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
@@ -232,7 +255,9 @@ for(effect in effects){
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
-## Using internal DSS code... 
+## Using internal DSS code...
+## Warning: 405 very small variances detected, have been offset away from zero
+## Warning: 405 very small variances detected, have been offset away from zero
 ## [1] 20
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
@@ -246,7 +271,9 @@ for(effect in effects){
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
-## Using internal DSS code... 
+## Using internal DSS code...
+## Warning: 418 very small variances detected, have been offset away from zero
+## Warning: 418 very small variances detected, have been offset away from zero
 ## [1] 25
 ## two groups detected:
 ##  will calculate methylation difference as the difference of
@@ -261,25 +288,14 @@ for(effect in effects){
 ##  will calculate methylation difference as the difference of
 ## treatment (group: 1) - control (group: 0)
 ## Using internal DSS code...
+## Warning: 405 very small variances detected, have been offset away from zero
+## Warning: 405 very small variances detected, have been offset away from zero
 
 
-models.res.diff = lapply(models.res, function(x) x$diff.list)
-models.res = lapply(models.res, function(x) x$rates)
-names(models.res) = effects
-names(models.res.diff) = effects
-
-
-# Rename names of models
-# Rename names of tools
-old.v=c("DSS.qvalue", "limma.qvalue","methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN", "methylKit.F.qvalue.none")
-new.v=c("DSS",      "limma"   ,"methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC", "methylKit-Ftest")
-names(new.v) = old.v
-
-
-for( i in 1:length(models.res.diff)){
-    names( models.res.diff[[i]] ) = new.v[ match( names( models.res.diff[[i]] ), old.v ) ]
-    rownames( models.res[[i]] ) = new.v[ match(  rownames( models.res[[i]] ), old.v ) ]
-}
+models.res.diff.orig = lapply(models.res, function(x) x$diff.list)
+models.res.orig = lapply(models.res, function(x) x$rates)
+names(models.res.orig) = effects
+names(models.res.diff.orig) = effects
 ```
 
 Visualisation
@@ -287,7 +303,12 @@ Visualisation
 
 Visualise sensitivity, specificity and F-score for different effect sizes.
 
+Limma performs the worst in comparison to DSS and methylKit. Therefore, to ensure that it has the best performance possible, we compared its performance after using combination of different input arguments.
+
 ``` r
+
+models.res=models.res.orig
+models.res.diff=models.res.diff.orig
 
 # Convert list of matrices to a data.frame
 models.res.ma = do.call("rbind", models.res)
@@ -297,12 +318,27 @@ models.res.df = cbind(models.res.df,
                       effect=as.factor(as.numeric(sapply(effects, 
                                                function(x) 
                                                  rep(x, nrow(models.res[[1]])  )))))
-  
-# 1. Create the plots
+
+# Plot the True/false positives/negatives that were computed
+msel = models.res.df[,c('TP','FN','FP','TN','tool', 'effect')]
+mseldat <- melt(msel, id.vars=c("tool","effect"))
+metrics = ggplot(mseldat, aes(variable, value, fill=tool)) + 
+  geom_bar(stat="identity", position="dodge",colour="black",
+           width=0.65)+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Number", x="Metric",fill='Tool')+
+  facet_wrap(~effect, nrow=1)+
+  theme(legend.position = "none")
+```
+
+``` r
+
+
+# 1. Create the plots for sensitivity, specificity and F-score
 #++++++++++++++++++++++++++++++++++
 
 # A palette
-cbPalette <- c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+cbPalette <- c( "#E69F00", "#CC79A7", "#CC79A7", "#CC79A7","#CC79A7","#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 p_sens<-ggplot(models.res.df,aes(effect, sens, fill=tool))+
   geom_bar(stat="identity",position='dodge',colour="black",
@@ -352,17 +388,23 @@ legend <- get_legend(p_sens)
 p_sens <- p_sens+ theme(legend.position="none")
 
 
-p_sens1 <- arrangeGrob(p_sens, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),
-                                              just=c("left","top"), gp=gpar(col="black", fontsize=14)))
-p_spec1 <- arrangeGrob(p_spec, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
-p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_metrics1 <- arrangeGrob(metrics, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),
+                                               just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+  
+p_sens1 <- arrangeGrob(p_sens, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "npc"),
+                                               just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_spec1 <- arrangeGrob(p_spec, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("d", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 
-
-#grid.arrange(p_sens1, p_spec1, p_fscore1, ncol = 2, nrow=2)
-grid.arrange(p_sens1, p_spec1, p_fscore1, legend, ncol = 2, nrow=2)
+grid.arrange(p_metrics1,
+             p_sens1, p_spec1,
+             p_fscore1, legend,
+             ncol = 2, nrow=3,
+             layout_matrix = rbind(c(1,1),c(2,3), c(4,5)),
+             widths=c(1,1))
 ```
 
-<img src="diff_meth_figs/diff_meth-vis-1.png" width="960" />
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-6-1.png" width="960" />
 
 Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines for different effect sizes:
 
@@ -374,76 +416,230 @@ Visualise intersections between DMCs from given tools for calling differentiall 
 
 ``` r
 
+source("./functions/vis.R")
 
-#' Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines.
-#'
-#' @param list_toolsDMCs list of methylDiff diff objects fom the methylKit library. The list should be named by the tools names.
-#' @param vis boolean indicating whether intersection of DMCs between given tools will be visualizated using UpSetR::upset function.
-#'
-#' @return a matrix with first column that indicate positions of DMCs and other columns presence or absence of the DMCs from given tools.
-plot.intersetion.tools = function(list_toolsDMCs, vis=TRUE){
-  
-  require(dplyr)
-  require(tidyr)
-  
-  DMCs2char = lapply(list_toolsDMCs, function(x){
-    paste0( x$chr,x$start,x$end )
-  })
+names_sets = rev(sort(as.character(levels(models.res.df$tool)))) # to plot tools in the same order as in barplots
 
-  charDMCs2df = lapply(1:length(DMCs2char), 
-                   function(j){
-                     # if there are DCs
-                     if(length(DMCs2char[[j]])!=0){
-                       data.frame(tool=names(DMCs2char)[j], pos=DMCs2char[[j]])
-                     }
-                   })
-  d = do.call('rbind',charDMCs2df)
-  binary_matrix <- d %>% mutate(value =1) %>% spread(tool, value, fill = 0 )
-  
-  if(vis){
-    require(UpSetR)
-    upset(binary_matrix, 
-          order.by = "freq",
-          mainbar.y.label = "DMCs Intersections",
-          sets.x.label = "Set size"
-    )
-  }
-  
-  return( invisible(binary_matrix) )
+plot.intersetion.tools(models.res.diff[['5']], vis=TRUE, keep.order=TRUE, sets = names_sets)
+```
+
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-7-1.png" width="672" />
+
+``` r
+
+plot.intersetion.tools(models.res.diff[['10']], vis=TRUE, keep.order = TRUE, sets = names_sets)
+```
+
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-7-2.png" width="672" />
+
+``` r
+
+plot.intersetion.tools(models.res.diff[['15']], vis=TRUE, keep.order = TRUE, sets = names_sets)
+```
+
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-7-3.png" width="672" />
+
+``` r
+
+plot.intersetion.tools(models.res.diff[['20']], vis=TRUE, keep.order = TRUE, sets = names_sets)
+```
+
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-7-4.png" width="672" />
+
+``` r
+
+plot.intersetion.tools(models.res.diff[['25']], vis=TRUE, keep.order=TRUE, sets = names_sets)
+```
+
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-7-5.png" width="672" />
+
+Results
+=======
+
+Visualise sensitivity, specificity and F-score for different effect sizes.
+
+Limma performs very similar for all combinations of input argument trend=TRUE/FALSE and robust=TRUE/FALSE and we here chose trend=TRUE and robust=TRUE. methylKit with F-test was removed since it performs almost identical to methylKit with Chisq test.
+
+``` r
+
+models.res.diff=models.res.diff.orig
+models.res=models.res.orig
+
+wh.exlc = which(names( models.res.diff[[1]] ) %in% c("methylKit.F.qvalue.none","limma.qvalue","limma.qvalue.trendTrobustF","limma.qvalue.trendFrobustT"))
+for( i in 1:length(models.res.diff)){
+    models.res.diff[[i]] = models.res.diff[[i]][-wh.exlc]
+    models.res[[i]] = models.res[[i]][-wh.exlc,]
 }
 
-plot.intersetion.tools(models.res.diff[['5']])
+# Rename names of tools
+old.v=c("DSS.qvalue", "limma.qvalue.trendTrobustT","methylKit.F.qvalue.none", "methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN", "methylKit.F.qvalue.none")
+new.v=c("DSS",      "limma"   ,"methylKit-Ftest", "methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC", "methylKit-Ftest")
+names(new.v) = old.v
+
+for( i in 1:length(models.res.diff)){
+    names( models.res.diff[[i]] ) = new.v[ match( names( models.res.diff[[i]] ), old.v ) ]
+    rownames( models.res[[i]] ) = new.v[ match(  rownames( models.res[[i]] ), old.v ) ]
+}
+
+# Convert list of matrices to a data.frame
+models.res.ma = do.call("rbind", models.res)
+models.res.df = data.frame(models.res.ma)
+models.res.df = cbind(models.res.df, 
+                      tool=rownames(models.res.ma),
+                      effect=as.factor(as.numeric(sapply(effects, 
+                                               function(x) 
+                                                 rep(x, nrow(models.res[[1]])  )))))
+  
+
+# Plot the True/false positives/negatives that were computed
+cbPalette <- c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+msel = models.res.df[,c('TP','FN','FP','TN','tool', 'effect')]
+mseldat <- melt(msel, id.vars=c("tool","effect"))
+metrics = ggplot(mseldat, aes(variable, value, fill=tool)) + 
+  geom_bar(stat="identity", position="dodge",colour="black",
+           width=0.65)+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Number", x="Metric",fill='Tool')+
+  facet_wrap(~effect, nrow=1)
+#  theme(legend.position = "none")
+
+#pdf("./figs_publication/simulated_metrics.pdf", width = 10, height = 3)
+plot(metrics)
 ```
 
-<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-1.png" width="672" />
+<img src="diff_meth_figs/diff_meth-sim-vis-1.png" width="960" />
+
+``` r
+#dev.off()
+
+
+
+# 1. Create the plots the plots for sensitivity, specificity and F-score
+#++++++++++++++++++++++++++++++++++
+
+# A palette
+cbPalette <- c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+p_sens<-ggplot(models.res.df,aes(effect, sens, fill=tool))+
+  geom_bar(stat="identity",position='dodge',colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Sensitivity", x="Effect size (methylation difference)",fill='Tool')
+  
+
+p_spec<-ggplot(models.res.df,aes(effect, spec, fill=tool))+
+  geom_bar(stat="identity",
+           position="dodge",
+           colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Specificity", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
+
+p_recall <- ggplot(models.res.df,aes(effect, recall, fill=tool))+
+  geom_bar(stat="identity",position='dodge',colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Recall", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
+
+p_fscore <- ggplot(models.res.df,aes(effect, f_score, fill=tool))+
+  geom_bar(stat="identity",position='dodge',colour="black",
+           width=0.65)+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="F-score", x="Effect size (methylation difference)",fill='Tool')+
+  theme(legend.position = "none")
+
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+legend <- get_legend(p_sens)
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+p_sens <- p_sens+ theme(legend.position="none")
+
+
+p_sens1 <- arrangeGrob(p_sens, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),
+                                              just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_spec1 <- arrangeGrob(p_spec, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+
+
+#pdf("./figs_publication/simulated_rates.pdf", width = 10, height = 7)
+grid.arrange(p_sens1, p_spec1,
+             p_fscore1, legend,
+             ncol = 2, nrow=2)
+```
+
+<img src="diff_meth_figs/diff_meth-sim-vis-2.png" width="960" />
+
+``` r
+#dev.off()
+```
+
+Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines for different effect sizes:
+
+-   5
+-   10
+-   15
+-   20
+-   25
 
 ``` r
 
-plot.intersetion.tools(models.res.diff[['10']])
+source("./functions/vis.R")
+
+#pdf("./figs_publication/plot.intersetion.tool.pdf", width = 10, height = 5)
+
+names_sets = rev(sort(as.character(levels(models.res.df$tool)))) # to plot tools in the same order as in barplots
+
+plot.intersetion.tools(models.res.diff[['5']], vis=TRUE, keep.order=TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
 ```
 
-<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-2.png" width="672" />
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-8-1.png" width="672" />
 
 ``` r
 
-plot.intersetion.tools(models.res.diff[['15']])
+plot.intersetion.tools(models.res.diff[['10']], vis=TRUE, keep.order = TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
 ```
 
-<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-3.png" width="672" />
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-8-2.png" width="672" />
 
 ``` r
 
-plot.intersetion.tools(models.res.diff[['20']])
+plot.intersetion.tools(models.res.diff[['15']], vis=TRUE, keep.order = TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
 ```
 
-<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-4.png" width="672" />
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-8-3.png" width="672" />
 
 ``` r
 
-plot.intersetion.tools(models.res.diff[['25']])
+plot.intersetion.tools(models.res.diff[['20']], vis=TRUE, keep.order = TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
 ```
 
-<img src="diff_meth_figs/diff_meth-unnamed-chunk-5-5.png" width="672" />
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-8-4.png" width="672" />
+
+``` r
+
+plot.intersetion.tools(models.res.diff[['25']], vis=TRUE, keep.order=TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
+```
+
+<img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-8-5.png" width="672" />
+
+``` r
+
+#dev.off()
+```
 
 ``` r
 sessionInfo()
@@ -464,48 +660,54 @@ sessionInfo()
 ## [11] LC_MEASUREMENT=de_DE.UTF-8 LC_IDENTIFICATION=C       
 ## 
 ## attached base packages:
-##  [1] splines   grid      parallel  stats4    stats     graphics  grDevices
-##  [8] utils     datasets  methods   base     
+##  [1] splines   grid      tools     parallel  stats4    stats     graphics 
+##  [8] grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] rmarkdown_1.6              UpSetR_1.3.3              
-##  [3] tidyr_0.6.3                dplyr_0.7.2               
-##  [5] plyr_1.8.4                 qvalue_2.8.0              
-##  [7] limma_3.32.3               DSS_2.16.0                
-##  [9] bsseq_1.12.2               SummarizedExperiment_1.6.3
-## [11] DelayedArray_0.2.7         matrixStats_0.52.2        
-## [13] Biobase_2.36.2             emdbook_1.3.9             
-## [15] gridExtra_2.2.1            ggplot2_2.2.1             
-## [17] methylKit_1.3.3            GenomicRanges_1.28.4      
-## [19] GenomeInfoDb_1.12.2        IRanges_2.10.2            
-## [21] S4Vectors_0.14.3           BiocGenerics_0.22.0       
+##  [1] qvalue_2.8.0               limma_3.32.3              
+##  [3] DSS_2.16.0                 bsseq_1.12.2              
+##  [5] SummarizedExperiment_1.6.3 DelayedArray_0.2.7        
+##  [7] matrixStats_0.52.2         Biobase_2.36.2            
+##  [9] emdbook_1.3.9              rmarkdown_1.6             
+## [11] reshape2_1.4.2             UpSetR_1.3.3              
+## [13] tidyr_0.6.3                dplyr_0.7.2               
+## [15] stringr_1.2.0              gridExtra_2.2.1           
+## [17] ggplot2_2.2.1              genomation_1.9.3          
+## [19] readr_1.1.1                methylKit_1.3.3           
+## [21] GenomicRanges_1.28.4       GenomeInfoDb_1.12.2       
+## [23] IRanges_2.10.2             S4Vectors_0.14.3          
+## [25] BiocGenerics_0.22.0       
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] mclust_5.3               Rcpp_0.12.12            
-##  [3] locfit_1.5-9.1           lattice_0.20-35         
-##  [5] Rsamtools_1.28.0         Biostrings_2.44.1       
-##  [7] gtools_3.5.0             rprojroot_1.2           
-##  [9] assertthat_0.2.0         digest_0.6.12           
-## [11] R6_2.2.2                 backports_1.1.0         
-## [13] evaluate_0.10.1          coda_0.19-1             
-## [15] zlibbioc_1.22.0          rlang_0.1.1             
-## [17] lazyeval_0.2.0           data.table_1.10.4       
-## [19] R.utils_2.5.0            R.oo_1.21.0             
-## [21] Matrix_1.2-10            bbmle_1.0.19            
-## [23] labeling_0.3             BiocParallel_1.10.1     
-## [25] stringr_1.2.0            fastseg_1.22.0          
-## [27] RCurl_1.95-4.8           munsell_0.4.3           
-## [29] compiler_3.4.1           numDeriv_2016.8-1       
-## [31] rtracklayer_1.36.4       pkgconfig_2.0.1         
-## [33] htmltools_0.3.6          tibble_1.3.3            
-## [35] GenomeInfoDbData_0.99.0  XML_3.98-1.9            
-## [37] permute_0.9-4            GenomicAlignments_1.12.1
-## [39] MASS_7.3-47              bitops_1.0-6            
-## [41] R.methodsS3_1.7.1        gtable_0.2.0            
-## [43] magrittr_1.5             scales_0.4.1            
-## [45] stringi_1.1.5            XVector_0.16.0          
-## [47] reshape2_1.4.2           bindrcpp_0.2            
-## [49] tools_3.4.1              glue_1.1.1              
-## [51] yaml_2.1.14              colorspace_1.3-2        
-## [53] knitr_1.16               bindr_0.1
+##  [1] R.utils_2.5.0            gtools_3.5.0            
+##  [3] assertthat_0.2.0         statmod_1.4.30          
+##  [5] BSgenome_1.44.0          GenomeInfoDbData_0.99.0 
+##  [7] Rsamtools_1.28.0         yaml_2.1.14             
+##  [9] impute_1.50.1            backports_1.1.0         
+## [11] numDeriv_2016.8-1        lattice_0.20-35         
+## [13] glue_1.1.1               bbmle_1.0.19            
+## [15] digest_0.6.12            XVector_0.16.0          
+## [17] colorspace_1.3-2         htmltools_0.3.6         
+## [19] Matrix_1.2-10            R.oo_1.21.0             
+## [21] plyr_1.8.4               XML_3.98-1.9            
+## [23] pkgconfig_2.0.1          zlibbioc_1.22.0         
+## [25] scales_0.4.1             BiocParallel_1.10.1     
+## [27] tibble_1.3.3             seqPattern_1.8.0        
+## [29] lazyeval_0.2.0           magrittr_1.5            
+## [31] mclust_5.3               evaluate_0.10.1         
+## [33] R.methodsS3_1.7.1        MASS_7.3-47             
+## [35] data.table_1.10.4        hms_0.3                 
+## [37] gridBase_0.4-7           locfit_1.5-9.1          
+## [39] munsell_0.4.3            plotrix_3.6-5           
+## [41] bindrcpp_0.2             Biostrings_2.44.1       
+## [43] compiler_3.4.1           fastseg_1.22.0          
+## [45] rlang_0.1.1              RCurl_1.95-4.8          
+## [47] bitops_1.0-6             tcltk_3.4.1             
+## [49] labeling_0.3             gtable_0.2.0            
+## [51] R6_2.2.2                 GenomicAlignments_1.12.1
+## [53] knitr_1.16               rtracklayer_1.36.4      
+## [55] rprojroot_1.2            bindr_0.1               
+## [57] permute_0.9-4            KernSmooth_2.23-15      
+## [59] stringi_1.1.5            Rcpp_0.12.12            
+## [61] coda_0.19-1
 ```

@@ -5,16 +5,12 @@ output: rmarkdown::github_document
 date: "`r Sys.Date()`"
 ---
 
-```{r, echo = FALSE}
-knitr::opts_chunk$set(collapse=TRUE, comment="##", fig.retina=2, fig.path = "diff_meth_figs/diff_meth_CTCF-")
-```
-
-
 # Goal
 
 We compared the performance of different methods for calling differentially methylated cytosines using real bisulfite sequencing experiments where we expect to see changes between samples on certain locations. Stadler and colleagues showed that DNA-binding factors can create low-methylated regions upon binding (Stadler et al., Nature 2011). They further show that the reduced methylation is a general feature of CTCF-occupied sites and if the site is unoccupied, the region on and around the site will have high methylation. This means that if the CTCF occupancy changes between two cell types, we expect to see a change in the methylation levels as well. Armed with this information, we looked for differentially methylated bases on regions that gained or lost CTCF binding between two cell types.
 
-We used CTCF binding sites derived form the ENCODE database for selecting methylation sensitive regions. Since it has beed shown by Maurano et al. Cell Rep. 2015 that DNA methylation changes were only likely to occur with binding site dynamics where the binding site was supported by a CTCF motif, we filtered CTCF peaks tare supported by CTCF DNA motifs from the Factorbook motifs (wgEncodeRegTfbsClusteredV3 ENCODE Mar 2012 Freeze (last updated 2013-07-21)).
+We used CTCF binding sites derived form the ECNODE database for selecting methylation sensitive regions. However, ChIP-seq does not discriminate between direct and indirect binding of DNA. Many CTCF peaks are the byproduct or "shadow" left by formaldehyde cross-linking of complex chromosomal looping interactions where the direct DNA binding is not clear (Xie et al Cell 2013, Wreczycka, Franke et al. bioarhive 2017). Since it has beed shown by Maurano et al. Cell Rep. 2015 that DNA methylation changes were only likely to occur with binding site dynamics where the binding site was supported by a CTCF motif, we filtered CTCF peaks tare supported by CTCF DNA motifs from the Factorbook motifs (wgEncodeRegTfbsClusteredV3 ENCODE Mar 2012 Freeze (last updated 2013-07-21)).
+
 
 # Functions
 
@@ -28,6 +24,8 @@ library(genomation)
 library(ggplot2)
 library(grid)
 library(gridExtra)
+library(reshape2)
+
 
 source("./functions/functions.R")
 
@@ -48,6 +46,7 @@ Factorbook.motifs.path = paste0(Factorbook_DIR, "wgEncodeRegTfbsClusteredV3.bed.
 
 ```
 
+# Load inupt data
 
 Download RRBS data for CTCF and CTCF DNA motifs.
 
@@ -287,6 +286,7 @@ names(methylBase.obj.list) = paste0(comb.of.cellline.pairs[,1], "_",comb.of.cell
 
 ```
 
+# Identification of differentially methylated cytosines
 
 Call differentially methylated cytosines using BSmooth, DSS, limma and methylKit. 
 
@@ -346,7 +346,7 @@ Call differentially methylated cytosines using BSmooth, DSS, limma and methylKit
 #https://bioconductor.org/packages/release/bioc/vignettes/limma/inst/doc/usersguide.pdf
 #The options trend=TRUE and robust=TRUE are also often helpful when running eBayes, increasing
 #power for certain types of data.
-# source("./functions/limma.R")
+#source("./functions/limma.R")
 # models.limma.diff  = mclapply(1:length(methylBase.obj.list), 
 #                                   function(i) {
 #                                       methylBase.obj = methylBase.obj.list[[i]]
@@ -358,7 +358,6 @@ Call differentially methylated cytosines using BSmooth, DSS, limma and methylKit
 
 ```
 
-
 Load output of tools for calculation of differentially methylates cytosines.
 
 ```{r}
@@ -367,13 +366,23 @@ Load output of tools for calculation of differentially methylates cytosines.
 models.methylkit.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.methylkit.all.rds")
 models.bsmooth.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.bsmooth.rds")
 models.dss.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.dss.rds")
-models.limma.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.limma.26072017.trendFALSErobustFALSE.rds")
 models.bsmooth.diff =readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.bsmooth.default.rds")
-
 
 models.perclcomb = mapply(c, models.methylkit.diff, models.bsmooth.diff, SIMPLIFY=FALSE)
 models.perclcomb = mapply(c, models.perclcomb, models.dss.diff, SIMPLIFY=FALSE)
-models.perclcomb = mapply(c, models.perclcomb, limma=models.limma.diff, SIMPLIFY=FALSE)
+
+# Add limma with different arguments
+p="/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/"
+limma.tFrF = readRDS(paste0(p,'ctcf.models.limma.26072017.trendFALSErobustFALSE.rds'))
+limma.tFrT = readRDS(paste0(p,'ctcf.models.limma.26072017.trendFALSErobustTRUE.rds'))
+limma.tTrF = readRDS(paste0(p,'ctcf.models.limma.26072017.trendTRUErobustFALSE.rds'))
+limma.tTrT = readRDS(paste0(p,'ctcf.models.limma.26072017.trendTRUErobustTRUE.rds'))
+
+models.perclcomb = mapply(c, models.perclcomb, limma.trendFrobustF=limma.tFrF, SIMPLIFY=FALSE)
+models.perclcomb = mapply(c, models.perclcomb, limma.trendFrobustT=limma.tFrT, SIMPLIFY=FALSE)
+models.perclcomb = mapply(c, models.perclcomb, limma.trendTrobustF=limma.tTrF, SIMPLIFY=FALSE)
+models.perclcomb = mapply(c, models.perclcomb, limma.trendTrobustT=limma.tTrT, SIMPLIFY=FALSE)
+
 
 #' Revert list structure:
 #' Now, first element of the list is a tool and then diff. meth. sites for every cell line separately
@@ -417,8 +426,11 @@ model_names = c(
 "methylKit.F.qvalue.none",
 "methylKit.Chisq.qvalue.MN",
 "dss.qvalue",
-"limma",
-"bsmooth.same.default"
+"bsmooth.same.default",
+"limma.trendFrobustF",
+"limma.trendFrobustT",
+"limma.trendTrobustF",
+"limma.trendTrobustT"
 )
 
 set.seed(112)
@@ -449,18 +461,128 @@ CTCF.stats.subset$precision = as.numeric(as.character(CTCF.stats.subset$precisio
 CTCF.stats.subset$NPV = as.numeric(as.character(CTCF.stats.subset$NPV))
 CTCF.stats.subset$recall = as.numeric(as.character(CTCF.stats.subset$recall))
 
-print("statistics for limma")
-print(CTCF.stats.subset[which(CTCF.stats.subset$model=="limma"),])
 
 ```
 
+# Visualisation 
+
+Visualisation of performance measurements of tools for DMCs detection based on the association between CTCF occupancy with methylation status in cell-type specific manner using the Wang et al data and the RRBS ENCODE data.
+
+
+```{r}
+
+CTCF.stats.subset$model<- ordered(CTCF.stats.subset$model, levels =  c("bsmooth.same.default",     "dss.qvalue",             
+"limma.trendFrobustF"     ,    "limma.trendFrobustT"      ,  
+ "limma.trendTrobustF"      ,   "limma.trendTrobustT" ,
+ "methylKit.F.qvalue.none" ,     "methylKit.Chisq.qvalue.none",
+"methylKit.F.qvalue.MN"   ,   "methylKit.Chisq.qvalue.MN"))
+# The palette 
+cbPalette <- c("#999999", "#E69F00", "#CC79A7", 
+               "#CC79A7", "#CC79A7", "#CC79A7",
+               "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00")
+
+
+# Plot the True/false positives/negatives that were computed
+models.res.df = CTCF.stats.subset
+msel = models.res.df[,c('TP','FN','FP','TN','model')]
+mseldat <- melt(msel, id.vars=c("model"))
+metrics = ggplot(mseldat, aes(variable, value, fill=model)) + 
+  geom_boxplot(alpha=0.7)+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Number", x="Metric",fill='Tool')
+
+plot(metrics)
+
+
+p_sens<-ggplot(CTCF.stats.subset, aes(x=model, y=sens, fill=model)) +
+  geom_boxplot()+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  labs(y="Sensitivity\n", x="Tool",fill='Tool')+
+  scale_fill_manual(values=cbPalette)+
+  theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
+
+p_spec<-ggplot(CTCF.stats.subset, aes(x=model, y=spec, fill=model)) +
+  geom_boxplot()+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  labs(y="Specificity", x="Tool",fill='Tool')+
+  scale_fill_manual(values=cbPalette)+
+  theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
+
+p_fscore<-ggplot(CTCF.stats.subset, aes(x=model, y=f_score, fill=model)) +
+  geom_boxplot()+
+  coord_cartesian(ylim=c(0.0,1.00))+
+  labs(y="F-score", x="Tool",fill='Tool')+
+  scale_fill_manual(values=cbPalette)+
+  theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
+
+p_sens1 <- arrangeGrob(p_sens, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_spec1 <- arrangeGrob(p_spec, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+
+grid.arrange(p_sens1, p_spec1, 
+             p_fscore1, ncol = 2, nrow=2)
+
+
+```
+
+Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines.
+
+```{r}
+
+# source("./functions/vis.R")
+# rownames(comb.of.cellline.pairs) = paste0(comb.of.cellline.pairs[,1], "_", comb.of.cellline.pairs[,2])
+# 
+# for(i in 1:length(models.perclcomb)){
+#   print(rownames(comb.of.cellline.pairs)[i] )
+#   plot.intersetion.tools( models.perclcomb [[i]], vis=TRUE, text.scale=c(2, 2, 2, 1.5, 2, 2.4) )
+# }
+# It's commented out, becacuse of a weird reason that it shows only methylKit-related sets and completely ignores DSS, like, etc
+
+```
+
+
+# Results
+
 Visualization of performance measurements of tools for DMCs detection based on the association between CTCF occupancy with methylation status in cell-type specific manner using the Wang et al data and the RRBS ENCODE data.
 
-```{r, message=FALSE, fig.height=10, fig.width=10}
+
+```{r}
+
+model_names.sub = c(
+"methylKit.F.qvalue.MN",
+"methylKit.Chisq.qvalue.none",
+"methylKit.F.qvalue.none",
+"methylKit.Chisq.qvalue.MN",
+"dss.qvalue",
+"bsmooth.same.default",
+"limma.trendTrobustT"
+)
+
+CTCF.stats.subset$model = as.character(CTCF.stats.subset$model)
+CTCF.stats.subset = CTCF.stats.subset[which(CTCF.stats.subset$model %in% model_names.sub),]
+CTCF.stats.subset = CTCF.stats.subset[-which(CTCF.stats.subset$model ==  "methylKit.F.qvalue.none"),]
+CTCF.stats.subset$model = as.factor(CTCF.stats.subset$model)
+
+
+# Plot the True/false positives/negatives that were computed
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+models.res.df = CTCF.stats.subset
+msel = models.res.df[,c('TP','FN','FP','TN','model')]
+mseldat <- melt(msel, id.vars=c("model"))
+metrics = ggplot(mseldat, aes(variable, value, fill=model)) + 
+  geom_boxplot(alpha=0.7)+
+  scale_fill_manual(values=cbPalette)+
+  labs(y="Number", x="Metric",fill='Tool')
+
+#pdf("./figs_publication/CTCF_metrics.pdf", width = 10, height = 5)
+plot(metrics)
+#dev.off()
+
+
 levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.F.qvalue.MN"] <- "methylKit-Ftest-OC"
 levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.MN"] <- "methylKit-Chisqtest-OC"
 levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.none"] <- "methylKit-Chisqtest"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="limma.qvalue"] <- "limma"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="limma.trendTrobustT"] <- "limma"
 levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="dss.qvalue"] <- "DSS"
 levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="bsmooth.same.default"] <- "BSmooth"
 
@@ -471,9 +593,6 @@ CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "limma")
 CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "DSS")
 CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "BSmooth")
 
-# 1. Create the plots
-#++++++++++++++++++++++++++++++++++
-
 # The palette 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
@@ -482,55 +601,46 @@ p_sens<-ggplot(CTCF.stats.subset, aes(x=model, y=sens, fill=model)) +
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Sensitivity\n", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
-  theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1))
+  theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_spec<-ggplot(CTCF.stats.subset, aes(x=model, y=spec, fill=model)) +
   geom_boxplot()+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Specificity", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
-  theme(legend.position = "none", axis.text.x  = element_text(angle=45, vjust=1, hjust=1))
+  theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_fscore<-ggplot(CTCF.stats.subset, aes(x=model, y=f_score, fill=model)) +
   geom_boxplot()+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="F-score", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
-  theme(legend.position = "none", axis.text.x  = element_text(angle=45, vjust=1, hjust=1))
-
-# 2. Save the legend
-#+++++++++++++++++++++++
-get_legend<-function(myggplot){
-  tmp <- ggplot_gtable(ggplot_build(myggplot))
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  legend <- tmp$grobs[[leg]]
-  return(legend)
-}
-legend <- get_legend(p_sens)
-# 3. Remove the legend from the box plot
-#+++++++++++++++++++++++
-p_sens <- p_sens+ theme(legend.position="none")
+  theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_sens1 <- arrangeGrob(p_sens, top = textGrob("a", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 p_spec1 <- arrangeGrob(p_spec, top = textGrob("b", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 p_fscore1 <- arrangeGrob(p_fscore, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
 
+
+#pdf("./figs_publication/CTCF_rates.pdf", width = 10, height = 7)
 grid.arrange(p_sens1, p_spec1, 
-             p_fscore1, legend,
-             ncol = 2, nrow=2)
+             p_fscore1, ncol = 2, nrow=2)
+#dev.off()
+
 ```
 
 
+Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines.
 
 ```{r}
 # Rename names of tools
-old.v=c("dss.qvalue", "limma","methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN", "methylKit.F.qvalue.none","bsmooth.same.default")
-new.v=c("DSS",      "limma"   ,"methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC", "methylKit-Ftest","BSmooth")
+old.v=c("bsmooth.same.default", "dss.qvalue", "limma.trendTrobustT","methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN", "methylKit.F.qvalue.none")
+new.v=c("BSmooth", "DSS",      "limma"   ,"methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC", "methylKit-Ftest")
 names(new.v) = old.v
 
 models.perclcomb.selected = lapply(1:length(models.perclcomb),
                                    function(i){
-                              x=models.perclcomb[[i]] [ which(names(models.perclcomb[[i]]) %in% model_names) ]
+                              x=models.perclcomb[[i]] [ which(names(models.perclcomb[[i]]) %in% model_names.sub) ]
                               names( x ) = as.character(new.v[match(names(x), old.v)])
                               x
                              })
@@ -538,10 +648,33 @@ models.perclcomb.selected = lapply(1:length(models.perclcomb),
 source("./functions/vis.R")
 rownames(comb.of.cellline.pairs) = paste0(comb.of.cellline.pairs[,1], "_", comb.of.cellline.pairs[,2])
 
+
+#pdf("./figs_publication/plot.CTCF.intersetion.tool.pdf", width = 10, height = 7)
+
+
+names_models= rev(levels(CTCF.stats.subset$model))
+
 for(i in 1:length(models.perclcomb.selected)){
   print(rownames(comb.of.cellline.pairs)[i] )
-  plot.intersetion.tools( models.perclcomb.selected [[1]] )
+  
+  # this part is to sort tools in  the same way in the plots
+  empty.gr = which(sapply(models.perclcomb.selected [[i]], length)==0)
+  if(length(empty.gr)>0){
+    ma=match(names(empty.gr), names_models)
+    names_models1 = names_models[-match(names(empty.gr), names_models)]
+    models.perclcomb.selected1 = models.perclcomb.selected[[i]][-match(names(empty.gr), names(models.perclcomb.selected[[i]]))]
+  }else{
+    models.perclcomb.selected1  = models.perclcomb.selected[[i]]
+    names_models1 = names_models
+  }
+  
+  # plot
+  plot.intersetion.tools( models.perclcomb.selected1, 
+                          vis=TRUE, sets = names_models1, keep.order=TRUE, 
+                          text.scale=c(2, 2, 2, 1.5, 2, 2.4)  )
 }
+
+dev.off()
 
 ```
 

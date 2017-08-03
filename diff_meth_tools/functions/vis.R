@@ -5,7 +5,7 @@
 #' @param vis boolean indicating whether intersection of DMCs between given tools will be visualizated using UpSetR::upset function.
 #'
 #' @return a matrix with first column that indicate positions of DMCs and other columns presence or absence of the DMCs from given tools.
-plot.intersetion.tools = function(list_toolsDMCs, vis=TRUE){
+plot.intersetion.tools = function(list_toolsDMCs, vis=TRUE, ...){
   
   require(dplyr)
   require(tidyr)
@@ -31,10 +31,11 @@ plot.intersetion.tools = function(list_toolsDMCs, vis=TRUE){
   
   if(vis){
     require(UpSetR)
-    upset(binary_matrix, 
+    return( upset(binary_matrix, 
           order.by = "freq",
-          mainbar.y.label = "DMCs Intersections",
-          sets.x.label = "Set size"
+          mainbar.y.label = "DMCs intersections",
+          sets.x.label = "Set size",
+          ...)
     )
   }
   
