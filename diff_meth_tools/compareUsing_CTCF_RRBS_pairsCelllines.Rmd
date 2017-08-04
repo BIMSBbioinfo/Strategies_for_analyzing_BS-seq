@@ -364,11 +364,20 @@ Load output of tools for calculation of differentially methylates cytosines.
 
 # Here are saved differentially methylated regions calculated by the tools as RDS files
 models.methylkit.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.methylkit.all.rds")
-models.bsmooth.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.bsmooth.rds")
 models.dss.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.dss.rds")
 models.bsmooth.diff =readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.bsmooth.default.rds")
 
-models.perclcomb = mapply(c, models.methylkit.diff, models.bsmooth.diff, SIMPLIFY=FALSE)
+# Since I forgot to filter DMC that have meth difference >= 5 earlier, I do it now.
+models.bsmooth.diff = lapply(1:length(models.bsmooth.diff), function(i){
+    a=models.bsmooth.diff[[i]]$bsmooth.same.default[which(abs(models.bsmooth.diff[[i]]$bsmooth.same.default$meanDiff)>=0.05),]
+    b=list()
+    b$bsmooth.same.default = a
+    b
+})
+
+#models.perclcomb = mapply(c, models.methylkit.diff, models.bsmooth.diff, SIMPLIFY=FALSE)
+models.perclcomb = mapply(c, models.methylkit.diff, SIMPLIFY=FALSE)
+models.perclcomb = mapply(c, models.perclcomb, models.bsmooth.diff, SIMPLIFY=FALSE)
 models.perclcomb = mapply(c, models.perclcomb, models.dss.diff, SIMPLIFY=FALSE)
 
 # Add limma with different arguments
@@ -395,7 +404,7 @@ fun <-  function(ll) {
 models = fun(models.perclcomb)
 
 print(names(models))
-print(paste0("model=",names(models)[1], ", pair_cell_lines=(", comb.of.cellline.pairs[1,][1], ", ",comb.of.cellline.pairs[1,][2], ") :"))
+print(paste0("model=",names(models)[1], ", pair_cell_lines=(", comb.of.cellline.pairs[1,][1], ", ", ") :"))
 print(models[[1]][[1]])
 
 ```
@@ -440,7 +449,7 @@ rates.cellline.model.sample =
               function(model_indx){
                       per_cellline = lapply(1:nrow(comb.of.cellline.pairs), 
                              function(pair_celllines_indx){
-                                          accuracy.atleast1DM(methylBase.obj.list[[pair_celllines_indx]], 
+                                          calc.metrics.atleast1DM(methylBase.obj.list[[pair_celllines_indx]], 
                                                               comb.of.cellline.pairs[pair_celllines_indx,], 
                                                               supp.tbl2.gr.CTCFmotif, 
                                                               models[[model_names[model_indx]]][[pair_celllines_indx]],
@@ -487,7 +496,7 @@ models.res.df = CTCF.stats.subset
 msel = models.res.df[,c('TP','FN','FP','TN','model')]
 mseldat <- melt(msel, id.vars=c("model"))
 metrics = ggplot(mseldat, aes(variable, value, fill=model)) + 
-  geom_boxplot(alpha=0.7)+
+  geom_boxplot(alpha=0.7, outlier.size = 0.1)+
   scale_fill_manual(values=cbPalette)+
   labs(y="Number", x="Metric",fill='Tool')
 
@@ -495,21 +504,21 @@ plot(metrics)
 
 
 p_sens<-ggplot(CTCF.stats.subset, aes(x=model, y=sens, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Sensitivity\n", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
   theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_spec<-ggplot(CTCF.stats.subset, aes(x=model, y=spec, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Specificity", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
   theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_fscore<-ggplot(CTCF.stats.subset, aes(x=model, y=f_score, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="F-score", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
@@ -564,6 +573,21 @@ CTCF.stats.subset = CTCF.stats.subset[-which(CTCF.stats.subset$model ==  "methyl
 CTCF.stats.subset$model = as.factor(CTCF.stats.subset$model)
 
 
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.F.qvalue.MN"] <- "methylKit-Ftest-OC"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.MN"] <- "methylKit-Chisqtest-OC"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.none"] <- "methylKit-Chisqtest"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="limma.trendTrobustT"] <- "limma"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="dss.qvalue"] <- "DSS"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="bsmooth.same.default"] <- "BSmooth"
+
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Ftest-OC")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Chisqtest-OC")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Chisqtest")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "limma")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "DSS")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "BSmooth")
+
+
 # Plot the True/false positives/negatives that were computed
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 models.res.df = CTCF.stats.subset
@@ -579,39 +603,25 @@ plot(metrics)
 #dev.off()
 
 
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.F.qvalue.MN"] <- "methylKit-Ftest-OC"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.MN"] <- "methylKit-Chisqtest-OC"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.none"] <- "methylKit-Chisqtest"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="limma.trendTrobustT"] <- "limma"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="dss.qvalue"] <- "DSS"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="bsmooth.same.default"] <- "BSmooth"
-
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Ftest-OC")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Chisqtest-OC")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Chisqtest")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "limma")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "DSS")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "BSmooth")
-
 # The palette 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 p_sens<-ggplot(CTCF.stats.subset, aes(x=model, y=sens, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Sensitivity\n", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
   theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_spec<-ggplot(CTCF.stats.subset, aes(x=model, y=spec, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Specificity", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
   theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_fscore<-ggplot(CTCF.stats.subset, aes(x=model, y=f_score, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="F-score", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
@@ -678,6 +688,156 @@ dev.off()
 
 ```
 
+Show methylation difference/effect size for true positive DMCs for different methods
+
+
+```{r}
+
+old.v=c("bsmooth.same.default", "dss.qvalue", "limma.trendTrobustT","methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN")
+new.v=c("BSmooth", "DSS",      "limma"   ,"methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC")
+names(new.v) = old.v
+
+model_names.sub = old.v
+
+
+metrics.gr.meth = 
+      mclapply(1:length(model_names.sub), 
+              function(model_indx){
+                      per_cellline = lapply(1:nrow(comb.of.cellline.pairs), 
+                             function(pair_celllines_indx){
+                                          calc.metrics.atleast1DM.GR(
+                                            methylBase.obj.list[[pair_celllines_indx]], 
+                            comb.of.cellline.pairs[pair_celllines_indx,], 
+                            supp.tbl2.gr.CTCFmotif,
+                            models[[model_names.sub[model_indx]]][[pair_celllines_indx]],
+                            sample_no_change_peaks=TRUE)
+                       })
+                       per_cellline
+}, mc.cores=length(model_names.sub))
+
+names(metrics.gr.meth) = new.v
+
+
+
+rownames(comb.of.cellline.pairs) = paste0(comb.of.cellline.pairs[,1], "_", comb.of.cellline.pairs[,2])
+names_of_cellline = rownames(comb.of.cellline.pairs)
+
+get.abs.meth.diff.metric = function(metrics.gr.meth, metric="TP.meth", names_of_cellline=c("")){
+  
+  metric.methdiff.pertool = lapply(1:length(metrics.gr.meth), function(tool.indx){
+  
+        metrics.gr.meth.tool.i = metrics.gr.meth[[tool.indx]] # length(metrics.gr.meth.tool.i) is 36
+        tool.i.metric.meth.diff = lapply(metrics.gr.meth.tool.i, function(cellline.meth.tool.i){
+                cellline.meth.tool.i[[metric]]$meth.diff
+        })
+        names(tool.i.metric.meth.diff) = names_of_cellline
+        melt.per.cl = melt( tool.i.metric.meth.diff )
+        melt.per.cl$tool = names(metrics.gr.meth)[tool.indx]
+        colnames(melt.per.cl) = c("meth.diff", "cell.line", "tool")
+        return(melt.per.cl)
+
+  })
+  names(metric.methdiff.pertool) = names(metrics.gr.meth)
+
+
+  metric.methdiff = do.call('rbind', metric.methdiff.pertool)
+  df = metric.methdiff
+  df$tool = factor(df$tool)
+  df$cell.line = factor(df$cell.line)
+  require(plyr)
+  df$tool = revalue(df$tool, new.v)
+  df$meth.diff = as.numeric(df$meth.diff)
+  df$abs.meth.diff = abs(df$meth.diff)
+  return(df)
+  
+}
+
+df.TP = get.abs.meth.diff.metric(metrics.gr.meth, metric="TP.meth", names_of_cellline=names_of_cellline )
+df.FP = get.abs.meth.diff.metric(metrics.gr.meth, metric="FP.meth", names_of_cellline=names_of_cellline )
+
+
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+gTP = ggplot(df.TP, aes(x = tool, y = abs.meth.diff, fill=tool)) +
+         geom_boxplot(outlier.size = 0.1)+
+          coord_cartesian()+
+         labs(y="Absolute methylation\ndifference of TP DMCs", x="Tool",fill='Tool')+
+          scale_fill_manual(values=cbPalette)+
+          theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
+# Note:
+# output of BSmooth returns values [0,1], so I converted it insise
+# calc.metrics.atleast1DM.GR function to [0,100]
+# otherwise it looks like this:
+# > summary(df.TP[which(df.TP$tool=="BSmooth"),]$abs.meth.diff)
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#  0.1000  0.1727  0.3061  0.3776  0.5264  1.0000
+
+gFP = ggplot(df.FP, aes(x = tool, y = abs.meth.diff, fill=tool)) +
+         geom_boxplot(outlier.size = 0.1)+
+          coord_cartesian()+
+         labs(y="Absolute value of methylation difference of FP DMCs", x="Tool",fill='Tool')+
+          scale_fill_manual(values=cbPalette)+
+          theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
+
+#pdf("./figs_publication/meth.diff.TP.FP.DMCs.pdf", width = 10, height = 7)
+grid.arrange(gTP, gFP,
+             ncol = 2, nrow=1)
+#dev.off()
+
+
+gTP.1 <- arrangeGrob(gTP, top = textGrob("d", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+
+
+#pdf("./figs_publication/fig_metrics_absmeth.pdf", width = 10, height = 7)
+
+grid.arrange(p_sens1, 
+             p_spec1, 
+             p_fscore1, 
+            gTP.1,
+             ncol = 2, nrow=2)
+
+#dev.off()
+```
+
+The same per cell line:
+
+```{r}
+
+ 
+
+
+gTP.per.cl = ggplot(df.TP, aes(x = tool, y = abs.meth.diff, fill=cell.line)) +
+         geom_boxplot(outlier.size = 0.1)+
+         labs(y="Abs. value of\nmeth. diff. of\nTP DMCs", x="Tool",fill='Tool')+
+          theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1)) +
+          guides(fill=guide_legend(nrow=6,byrow=TRUE))
+
+# Save the legend
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+legend <- get_legend(gTP.per.cl)
+# Remove the legend
+gTP.per.cl <- gTP.per.cl+ theme(legend.position="none")
+
+gFP.per.cl = ggplot(df.FP, aes(x = tool, y = abs.meth.diff, fill=cell.line)) +
+         geom_boxplot(outlier.size = 0.1)+
+         labs(y="Abs. value of\nmeth. diff. of\nFP DMCs", x="Tool",fill='Tool')+
+          theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
+
+
+#pdf("./figs_publication/meth.diff.TP.FP.DMCs.per.cl.pdf", width = 15, height = 7)
+grid.arrange(gTP.per.cl, 
+             gFP.per.cl,
+             legend,
+             ncol = 1, nrow=3)
+#dev.off()
+
+
+```
 
 ```{r}
 sessionInfo()

@@ -1,7 +1,7 @@
 Strategies for analyzing bisulfite-seq data on CTCF data
 ================
 Katarzyna Wreczycka
-2017-08-03
+2017-08-04
 
 Goal
 ====
@@ -17,12 +17,82 @@ Load libraries and functions.
 
 ``` r
 library("methylKit")
+```
+
+    ## Loading required package: GenomicRanges
+
+    ## Loading required package: stats4
+
+    ## Loading required package: BiocGenerics
+
+    ## Loading required package: parallel
+
+    ## 
+    ## Attaching package: 'BiocGenerics'
+
+    ## The following objects are masked from 'package:parallel':
+    ## 
+    ##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+    ##     clusterExport, clusterMap, parApply, parCapply, parLapply,
+    ##     parLapplyLB, parRapply, parSapply, parSapplyLB
+
+    ## The following objects are masked from 'package:stats':
+    ## 
+    ##     IQR, mad, sd, var, xtabs
+
+    ## The following objects are masked from 'package:base':
+    ## 
+    ##     anyDuplicated, append, as.data.frame, cbind, colMeans,
+    ##     colnames, colSums, do.call, duplicated, eval, evalq, Filter,
+    ##     Find, get, grep, grepl, intersect, is.unsorted, lapply,
+    ##     lengths, Map, mapply, match, mget, order, paste, pmax,
+    ##     pmax.int, pmin, pmin.int, Position, rank, rbind, Reduce,
+    ##     rowMeans, rownames, rowSums, sapply, setdiff, sort, table,
+    ##     tapply, union, unique, unsplit, which, which.max, which.min
+
+    ## Loading required package: S4Vectors
+
+    ## 
+    ## Attaching package: 'S4Vectors'
+
+    ## The following object is masked from 'package:base':
+    ## 
+    ##     expand.grid
+
+    ## Loading required package: IRanges
+
+    ## Loading required package: GenomeInfoDb
+
+``` r
 library(tools)
 library(readr)
 library(genomation)
+```
+
+    ## Loading required package: grid
+
+    ## 
+    ## Attaching package: 'genomation'
+
+    ## The following objects are masked from 'package:methylKit':
+    ## 
+    ##     getFeatsWithTargetsStats, getFlanks, getMembers,
+    ##     getTargetAnnotationStats, plotTargetAnnotation
+
+``` r
 library(ggplot2)
 library(grid)
 library(gridExtra)
+```
+
+    ## 
+    ## Attaching package: 'gridExtra'
+
+    ## The following object is masked from 'package:BiocGenerics':
+    ## 
+    ##     combine
+
+``` r
 library(reshape2)
 
 
@@ -117,7 +187,11 @@ rrbs.tbl =data.frame(# filenames
                      # original names of cell lines (form the files.txt file)
                      celline.o=rrbs.cell.lines,
                      stringsAsFactors = FALSE)
+```
 
+    ## Loading required package: stringr
+
+``` r
 print(head(rrbs.tbl))
 ```
 
@@ -513,11 +587,20 @@ Load output of tools for calculation of differentially methylates cytosines.
 ``` r
 # Here are saved differentially methylated regions calculated by the tools as RDS files
 models.methylkit.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.methylkit.all.rds")
-models.bsmooth.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.bsmooth.rds")
 models.dss.diff = readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.dss.rds")
 models.bsmooth.diff =readRDS("/data/akalin/kwreczy/projects/Strategies_for_analyzing_bisulfite-seq_data/ctcf.models.bsmooth.default.rds")
 
-models.perclcomb = mapply(c, models.methylkit.diff, models.bsmooth.diff, SIMPLIFY=FALSE)
+# Since I forgot to filter DMC that have meth difference >= 5 earlier, I do it now.
+models.bsmooth.diff = lapply(1:length(models.bsmooth.diff), function(i){
+    a=models.bsmooth.diff[[i]]$bsmooth.same.default[which(abs(models.bsmooth.diff[[i]]$bsmooth.same.default$meanDiff)>=0.05),]
+    b=list()
+    b$bsmooth.same.default = a
+    b
+})
+
+#models.perclcomb = mapply(c, models.methylkit.diff, models.bsmooth.diff, SIMPLIFY=FALSE)
+models.perclcomb = mapply(c, models.methylkit.diff, SIMPLIFY=FALSE)
+models.perclcomb = mapply(c, models.perclcomb, models.bsmooth.diff, SIMPLIFY=FALSE)
 models.perclcomb = mapply(c, models.perclcomb, models.dss.diff, SIMPLIFY=FALSE)
 
 # Add limma with different arguments
@@ -561,10 +644,10 @@ print(names(models))
     ## [25] "limma.trendTrobustF"             "limma.trendTrobustT"
 
 ``` r
-print(paste0("model=",names(models)[1], ", pair_cell_lines=(", comb.of.cellline.pairs[1,][1], ", ",comb.of.cellline.pairs[1,][2], ") :"))
+print(paste0("model=",names(models)[1], ", pair_cell_lines=(", comb.of.cellline.pairs[1,][1], ", ", ") :"))
 ```
 
-    ## [1] "model=methylKit.F.SLIM.none, pair_cell_lines=(AG09319, AG09309) :"
+    ## [1] "model=methylKit.F.SLIM.none, pair_cell_lines=(AG09319, ) :"
 
 ``` r
 print(models[[1]][[1]])
@@ -636,7 +719,7 @@ rates.cellline.model.sample =
               function(model_indx){
                       per_cellline = lapply(1:nrow(comb.of.cellline.pairs), 
                              function(pair_celllines_indx){
-                                          accuracy.atleast1DM(methylBase.obj.list[[pair_celllines_indx]], 
+                                          calc.metrics.atleast1DM(methylBase.obj.list[[pair_celllines_indx]], 
                                                               comb.of.cellline.pairs[pair_celllines_indx,], 
                                                               supp.tbl2.gr.CTCFmotif, 
                                                               models[[model_names[model_indx]]][[pair_celllines_indx]],
@@ -680,7 +763,7 @@ models.res.df = CTCF.stats.subset
 msel = models.res.df[,c('TP','FN','FP','TN','model')]
 mseldat <- melt(msel, id.vars=c("model"))
 metrics = ggplot(mseldat, aes(variable, value, fill=model)) + 
-  geom_boxplot(alpha=0.7)+
+  geom_boxplot(alpha=0.7, outlier.size = 0.1)+
   scale_fill_manual(values=cbPalette)+
   labs(y="Number", x="Metric",fill='Tool')
 
@@ -691,21 +774,21 @@ plot(metrics)
 
 ``` r
 p_sens<-ggplot(CTCF.stats.subset, aes(x=model, y=sens, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Sensitivity\n", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
   theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_spec<-ggplot(CTCF.stats.subset, aes(x=model, y=spec, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Specificity", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
   theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_fscore<-ggplot(CTCF.stats.subset, aes(x=model, y=f_score, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="F-score", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
@@ -760,6 +843,21 @@ CTCF.stats.subset = CTCF.stats.subset[-which(CTCF.stats.subset$model ==  "methyl
 CTCF.stats.subset$model = as.factor(CTCF.stats.subset$model)
 
 
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.F.qvalue.MN"] <- "methylKit-Ftest-OC"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.MN"] <- "methylKit-Chisqtest-OC"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.none"] <- "methylKit-Chisqtest"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="limma.trendTrobustT"] <- "limma"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="dss.qvalue"] <- "DSS"
+levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="bsmooth.same.default"] <- "BSmooth"
+
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Ftest-OC")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Chisqtest-OC")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Chisqtest")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "limma")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "DSS")
+CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "BSmooth")
+
+
 # Plot the True/false positives/negatives that were computed
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 models.res.df = CTCF.stats.subset
@@ -780,39 +878,25 @@ plot(metrics)
 #dev.off()
 
 
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.F.qvalue.MN"] <- "methylKit-Ftest-OC"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.MN"] <- "methylKit-Chisqtest-OC"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="methylKit.Chisq.qvalue.none"] <- "methylKit-Chisqtest"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="limma.trendTrobustT"] <- "limma"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="dss.qvalue"] <- "DSS"
-levels(CTCF.stats.subset$model)[levels(CTCF.stats.subset$model)=="bsmooth.same.default"] <- "BSmooth"
-
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Ftest-OC")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Chisqtest-OC")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "methylKit-Chisqtest")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "limma")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "DSS")
-CTCF.stats.subset$model=relevel(CTCF.stats.subset$model, "BSmooth")
-
 # The palette 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 p_sens<-ggplot(CTCF.stats.subset, aes(x=model, y=sens, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Sensitivity\n", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
   theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_spec<-ggplot(CTCF.stats.subset, aes(x=model, y=spec, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="Specificity", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
   theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
 
 p_fscore<-ggplot(CTCF.stats.subset, aes(x=model, y=f_score, fill=model)) +
-  geom_boxplot()+
+  geom_boxplot(outlier.size = 0.1)+
   coord_cartesian(ylim=c(0.0,1.00))+
   labs(y="F-score", x="Tool",fill='Tool')+
   scale_fill_manual(values=cbPalette)+
@@ -883,6 +967,66 @@ for(i in 1:length(models.perclcomb.selected)){
 ```
 
     ## [1] "AG09319_AG09309"
+
+    ## Loading required package: dplyr
+
+    ## 
+    ## Attaching package: 'dplyr'
+
+    ## The following object is masked from 'package:gridExtra':
+    ## 
+    ##     combine
+
+    ## The following object is masked from 'package:methylKit':
+    ## 
+    ##     select
+
+    ## The following objects are masked from 'package:GenomicRanges':
+    ## 
+    ##     intersect, setdiff, union
+
+    ## The following object is masked from 'package:GenomeInfoDb':
+    ## 
+    ##     intersect
+
+    ## The following objects are masked from 'package:IRanges':
+    ## 
+    ##     collapse, desc, intersect, setdiff, slice, union
+
+    ## The following objects are masked from 'package:S4Vectors':
+    ## 
+    ##     first, intersect, rename, setdiff, setequal, union
+
+    ## The following objects are masked from 'package:BiocGenerics':
+    ## 
+    ##     combine, intersect, setdiff, union
+
+    ## The following objects are masked from 'package:stats':
+    ## 
+    ##     filter, lag
+
+    ## The following objects are masked from 'package:base':
+    ## 
+    ##     intersect, setdiff, setequal, union
+
+    ## Loading required package: tidyr
+
+    ## 
+    ## Attaching package: 'tidyr'
+
+    ## The following object is masked from 'package:reshape2':
+    ## 
+    ##     smiths
+
+    ## The following object is masked from 'package:methylKit':
+    ## 
+    ##     unite
+
+    ## The following object is masked from 'package:S4Vectors':
+    ## 
+    ##     expand
+
+    ## Loading required package: UpSetR
 
 ![](compareUsing_CTCF_RRBS_pairsCelllines_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-15-1.png)
 
@@ -1033,6 +1177,196 @@ dev.off()
     ## null device 
     ##           1
 
+Show methylation difference/effect size for true positive DMCs for different methods
+
+``` r
+old.v=c("bsmooth.same.default", "dss.qvalue", "limma.trendTrobustT","methylKit.Chisq.qvalue.MN","methylKit.Chisq.qvalue.none", "methylKit.F.qvalue.MN")
+new.v=c("BSmooth", "DSS",      "limma"   ,"methylKit-Chisqtest-OC", "methylKit-Chisqtest", "methylKit-Ftest-OC")
+names(new.v) = old.v
+
+model_names.sub = old.v
+
+
+metrics.gr.meth = 
+      mclapply(1:length(model_names.sub), 
+              function(model_indx){
+                      per_cellline = lapply(1:nrow(comb.of.cellline.pairs), 
+                             function(pair_celllines_indx){
+                                          calc.metrics.atleast1DM.GR(
+                                            methylBase.obj.list[[pair_celllines_indx]], 
+                            comb.of.cellline.pairs[pair_celllines_indx,], 
+                            supp.tbl2.gr.CTCFmotif,
+                            models[[model_names.sub[model_indx]]][[pair_celllines_indx]],
+                            sample_no_change_peaks=TRUE)
+                       })
+                       per_cellline
+}, mc.cores=length(model_names.sub))
+
+names(metrics.gr.meth) = new.v
+
+
+
+rownames(comb.of.cellline.pairs) = paste0(comb.of.cellline.pairs[,1], "_", comb.of.cellline.pairs[,2])
+names_of_cellline = rownames(comb.of.cellline.pairs)
+
+get.abs.meth.diff.metric = function(metrics.gr.meth, metric="TP.meth", names_of_cellline=c("")){
+  
+  metric.methdiff.pertool = lapply(1:length(metrics.gr.meth), function(tool.indx){
+  
+        metrics.gr.meth.tool.i = metrics.gr.meth[[tool.indx]] # length(metrics.gr.meth.tool.i) is 36
+        tool.i.metric.meth.diff = lapply(metrics.gr.meth.tool.i, function(cellline.meth.tool.i){
+                cellline.meth.tool.i[[metric]]$meth.diff
+        })
+        names(tool.i.metric.meth.diff) = names_of_cellline
+        melt.per.cl = melt( tool.i.metric.meth.diff )
+        melt.per.cl$tool = names(metrics.gr.meth)[tool.indx]
+        colnames(melt.per.cl) = c("meth.diff", "cell.line", "tool")
+        return(melt.per.cl)
+
+  })
+  names(metric.methdiff.pertool) = names(metrics.gr.meth)
+
+
+  metric.methdiff = do.call('rbind', metric.methdiff.pertool)
+  df = metric.methdiff
+  df$tool = factor(df$tool)
+  df$cell.line = factor(df$cell.line)
+  require(plyr)
+  df$tool = revalue(df$tool, new.v)
+  df$meth.diff = as.numeric(df$meth.diff)
+  df$abs.meth.diff = abs(df$meth.diff)
+  return(df)
+  
+}
+
+df.TP = get.abs.meth.diff.metric(metrics.gr.meth, metric="TP.meth", names_of_cellline=names_of_cellline )
+```
+
+    ## Loading required package: plyr
+
+    ## -------------------------------------------------------------------------
+
+    ## You have loaded plyr after dplyr - this is likely to cause problems.
+    ## If you need functions from both plyr and dplyr, please load plyr first, then dplyr:
+    ## library(plyr); library(dplyr)
+
+    ## -------------------------------------------------------------------------
+
+    ## 
+    ## Attaching package: 'plyr'
+
+    ## The following objects are masked from 'package:dplyr':
+    ## 
+    ##     arrange, count, desc, failwith, id, mutate, rename, summarise,
+    ##     summarize
+
+    ## The following object is masked from 'package:IRanges':
+    ## 
+    ##     desc
+
+    ## The following object is masked from 'package:S4Vectors':
+    ## 
+    ##     rename
+
+    ## The following `from` values were not present in `x`: bsmooth.same.default, dss.qvalue, limma.trendTrobustT, methylKit.Chisq.qvalue.MN, methylKit.Chisq.qvalue.none, methylKit.F.qvalue.MN
+
+``` r
+df.FP = get.abs.meth.diff.metric(metrics.gr.meth, metric="FP.meth", names_of_cellline=names_of_cellline )
+```
+
+    ## The following `from` values were not present in `x`: bsmooth.same.default, dss.qvalue, limma.trendTrobustT, methylKit.Chisq.qvalue.MN, methylKit.Chisq.qvalue.none, methylKit.F.qvalue.MN
+
+``` r
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+gTP = ggplot(df.TP, aes(x = tool, y = abs.meth.diff, fill=tool)) +
+         geom_boxplot(outlier.size = 0.1)+
+          coord_cartesian()+
+         labs(y="Absolute methylation\ndifference of TP DMCs", x="Tool",fill='Tool')+
+          scale_fill_manual(values=cbPalette)+
+          theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
+# Note:
+# output of BSmooth returns values [0,1], so I converted it insise
+# calc.metrics.atleast1DM.GR function to [0,100]
+# otherwise it looks like this:
+# > summary(df.TP[which(df.TP$tool=="BSmooth"),]$abs.meth.diff)
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#  0.1000  0.1727  0.3061  0.3776  0.5264  1.0000
+
+gFP = ggplot(df.FP, aes(x = tool, y = abs.meth.diff, fill=tool)) +
+         geom_boxplot(outlier.size = 0.1)+
+          coord_cartesian()+
+         labs(y="Absolute value of methylation difference of FP DMCs", x="Tool",fill='Tool')+
+          scale_fill_manual(values=cbPalette)+
+          theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
+
+#pdf("./figs_publication/meth.diff.TP.FP.DMCs.pdf", width = 10, height = 7)
+grid.arrange(gTP, gFP,
+             ncol = 2, nrow=1)
+```
+
+![](compareUsing_CTCF_RRBS_pairsCelllines_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-1.png)
+
+``` r
+#dev.off()
+
+
+gTP.1 <- arrangeGrob(gTP, top = textGrob("d", x=unit(0, "npc"),y=unit(1, "npc"),just=c("left","top"), gp=gpar(col="black", fontsize=14)))
+
+
+#pdf("./figs_publication/fig_metrics_absmeth.pdf", width = 10, height = 7)
+
+grid.arrange(p_sens1, 
+             p_spec1, 
+             p_fscore1, 
+            gTP.1,
+             ncol = 2, nrow=2)
+```
+
+![](compareUsing_CTCF_RRBS_pairsCelllines_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-2.png)
+
+``` r
+#dev.off()
+```
+
+The same per cell line:
+
+``` r
+gTP.per.cl = ggplot(df.TP, aes(x = tool, y = abs.meth.diff, fill=cell.line)) +
+         geom_boxplot(outlier.size = 0.1)+
+         labs(y="Abs. value of\nmeth. diff. of\nTP DMCs", x="Tool",fill='Tool')+
+          theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1)) +
+          guides(fill=guide_legend(nrow=6,byrow=TRUE))
+
+# Save the legend
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+legend <- get_legend(gTP.per.cl)
+# Remove the legend
+gTP.per.cl <- gTP.per.cl+ theme(legend.position="none")
+
+gFP.per.cl = ggplot(df.FP, aes(x = tool, y = abs.meth.diff, fill=cell.line)) +
+         geom_boxplot(outlier.size = 0.1)+
+         labs(y="Abs. value of\nmeth. diff. of\nFP DMCs", x="Tool",fill='Tool')+
+          theme(axis.text.x  = element_text(angle=45, vjust=1, hjust=1), legend.position = "none")
+
+
+#pdf("./figs_publication/meth.diff.TP.FP.DMCs.per.cl.pdf", width = 15, height = 7)
+grid.arrange(gTP.per.cl, 
+             gFP.per.cl,
+             legend,
+             ncol = 1, nrow=3)
+```
+
+![](compareUsing_CTCF_RRBS_pairsCelllines_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-17-1.png)
+
+``` r
+#dev.off()
+```
+
 ``` r
 sessionInfo()
 ```
@@ -1054,52 +1388,47 @@ sessionInfo()
     ## [11] LC_MEASUREMENT=de_DE.UTF-8 LC_IDENTIFICATION=C       
     ## 
     ## attached base packages:
-    ##  [1] tools     splines   grid      parallel  stats4    stats     graphics 
-    ##  [8] grDevices utils     datasets  methods   base     
+    ##  [1] grid      tools     parallel  stats4    stats     graphics  grDevices
+    ##  [8] utils     datasets  methods   base     
     ## 
     ## other attached packages:
-    ##  [1] stringr_1.2.0              genomation_1.9.3          
-    ##  [3] readr_1.1.1                UpSetR_1.3.3              
-    ##  [5] tidyr_0.6.3                dplyr_0.7.2               
-    ##  [7] qvalue_2.8.0               limma_3.32.3              
-    ##  [9] DSS_2.16.0                 bsseq_1.12.2              
-    ## [11] SummarizedExperiment_1.6.3 DelayedArray_0.2.7        
-    ## [13] matrixStats_0.52.2         Biobase_2.36.2            
-    ## [15] emdbook_1.3.9              gridExtra_2.2.1           
-    ## [17] reshape2_1.4.2             ggplot2_2.2.1             
-    ## [19] methylKit_1.3.3            GenomicRanges_1.28.4      
-    ## [21] GenomeInfoDb_1.12.2        IRanges_2.10.2            
-    ## [23] S4Vectors_0.14.3           BiocGenerics_0.22.0       
-    ## [25] rmarkdown_1.6             
+    ##  [1] plyr_1.8.4           UpSetR_1.3.3         tidyr_0.6.3         
+    ##  [4] dplyr_0.7.2          stringr_1.2.0        reshape2_1.4.2      
+    ##  [7] gridExtra_2.2.1      ggplot2_2.2.1        genomation_1.9.3    
+    ## [10] readr_1.1.1          methylKit_1.3.3      GenomicRanges_1.28.4
+    ## [13] GenomeInfoDb_1.12.2  IRanges_2.10.2       S4Vectors_0.14.3    
+    ## [16] BiocGenerics_0.22.0  rmarkdown_1.6       
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] R.utils_2.5.0            gtools_3.5.0            
-    ##  [3] assertthat_0.2.0         statmod_1.4.30          
-    ##  [5] BSgenome_1.44.0          GenomeInfoDbData_0.99.0 
-    ##  [7] Rsamtools_1.28.0         impute_1.50.1           
-    ##  [9] yaml_2.1.14              numDeriv_2016.8-1       
-    ## [11] backports_1.1.0          lattice_0.20-35         
-    ## [13] glue_1.1.1               bbmle_1.0.19            
-    ## [15] digest_0.6.12            XVector_0.16.0          
-    ## [17] colorspace_1.3-2         htmltools_0.3.6         
-    ## [19] Matrix_1.2-10            R.oo_1.21.0             
-    ## [21] plyr_1.8.4               XML_3.98-1.9            
-    ## [23] pkgconfig_2.0.1          zlibbioc_1.22.0         
-    ## [25] scales_0.4.1             BiocParallel_1.10.1     
-    ## [27] tibble_1.3.3             seqPattern_1.8.0        
-    ## [29] lazyeval_0.2.0           magrittr_1.5            
-    ## [31] mclust_5.3               evaluate_0.10.1         
-    ## [33] R.methodsS3_1.7.1        MASS_7.3-47             
-    ## [35] data.table_1.10.4        hms_0.3                 
-    ## [37] gridBase_0.4-7           munsell_0.4.3           
-    ## [39] locfit_1.5-9.1           plotrix_3.6-5           
-    ## [41] bindrcpp_0.2             Biostrings_2.44.1       
-    ## [43] compiler_3.4.1           fastseg_1.22.0          
-    ## [45] rlang_0.1.1              RCurl_1.95-4.8          
-    ## [47] bitops_1.0-6             labeling_0.3            
-    ## [49] gtable_0.2.0             R6_2.2.2                
-    ## [51] GenomicAlignments_1.12.1 knitr_1.16              
-    ## [53] rtracklayer_1.36.4       bindr_0.1               
-    ## [55] rprojroot_1.2            KernSmooth_2.23-15      
-    ## [57] permute_0.9-4            stringi_1.1.5           
-    ## [59] Rcpp_0.12.12             coda_0.19-1
+    ##  [1] Biobase_2.36.2             splines_3.4.1             
+    ##  [3] R.utils_2.5.0              gtools_3.5.0              
+    ##  [5] assertthat_0.2.0           BSgenome_1.44.0           
+    ##  [7] GenomeInfoDbData_0.99.0    Rsamtools_1.28.0          
+    ##  [9] yaml_2.1.14                impute_1.50.1             
+    ## [11] numDeriv_2016.8-1          backports_1.1.0           
+    ## [13] lattice_0.20-35            glue_1.1.1                
+    ## [15] limma_3.32.3               bbmle_1.0.19              
+    ## [17] digest_0.6.12              XVector_0.16.0            
+    ## [19] qvalue_2.8.0               colorspace_1.3-2          
+    ## [21] htmltools_0.3.6            Matrix_1.2-10             
+    ## [23] R.oo_1.21.0                XML_3.98-1.9              
+    ## [25] pkgconfig_2.0.1            emdbook_1.3.9             
+    ## [27] zlibbioc_1.22.0            scales_0.4.1              
+    ## [29] BiocParallel_1.10.1        tibble_1.3.3              
+    ## [31] seqPattern_1.8.0           SummarizedExperiment_1.6.3
+    ## [33] lazyeval_0.2.0             magrittr_1.5              
+    ## [35] mclust_5.3                 evaluate_0.10.1           
+    ## [37] R.methodsS3_1.7.1          MASS_7.3-47               
+    ## [39] data.table_1.10.4          hms_0.3                   
+    ## [41] matrixStats_0.52.2         gridBase_0.4-7            
+    ## [43] munsell_0.4.3              plotrix_3.6-5             
+    ## [45] DelayedArray_0.2.7         bindrcpp_0.2              
+    ## [47] Biostrings_2.44.1          compiler_3.4.1            
+    ## [49] fastseg_1.22.0             rlang_0.1.1               
+    ## [51] RCurl_1.95-4.8             bitops_1.0-6              
+    ## [53] labeling_0.3               gtable_0.2.0              
+    ## [55] R6_2.2.2                   GenomicAlignments_1.12.1  
+    ## [57] knitr_1.16                 rtracklayer_1.36.4        
+    ## [59] bindr_0.1                  rprojroot_1.2             
+    ## [61] KernSmooth_2.23-15         stringi_1.1.5             
+    ## [63] Rcpp_0.12.12               coda_0.19-1

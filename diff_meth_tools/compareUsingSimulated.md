@@ -1,7 +1,7 @@
 The comparison of differentially methylated bases detection tools on simulated data
 ================
 Katarzyna Wreczycka
-2017-08-03
+2017-08-04
 
 Goal
 ====
@@ -603,7 +603,7 @@ source("./functions/vis.R")
 
 names_sets = rev(sort(as.character(levels(models.res.df$tool)))) # to plot tools in the same order as in barplots
 
-plot.intersetion.tools(models.res.diff[['5']], vis=TRUE, keep.order=TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
+plot.intersetion.tools(models.res.diff[['5']], vis=TRUE, keep.order = TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
 ```
 
 <img src="diff_meth_figs/diff_meth-sim-unnamed-chunk-8-1.png" width="672" />
@@ -660,54 +660,49 @@ sessionInfo()
 ## [11] LC_MEASUREMENT=de_DE.UTF-8 LC_IDENTIFICATION=C       
 ## 
 ## attached base packages:
-##  [1] splines   grid      tools     parallel  stats4    stats     graphics 
-##  [8] grDevices utils     datasets  methods   base     
+##  [1] splines   grid      parallel  stats4    stats     graphics  grDevices
+##  [8] utils     datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] qvalue_2.8.0               limma_3.32.3              
-##  [3] DSS_2.16.0                 bsseq_1.12.2              
-##  [5] SummarizedExperiment_1.6.3 DelayedArray_0.2.7        
-##  [7] matrixStats_0.52.2         Biobase_2.36.2            
-##  [9] emdbook_1.3.9              rmarkdown_1.6             
-## [11] reshape2_1.4.2             UpSetR_1.3.3              
-## [13] tidyr_0.6.3                dplyr_0.7.2               
-## [15] stringr_1.2.0              gridExtra_2.2.1           
-## [17] ggplot2_2.2.1              genomation_1.9.3          
-## [19] readr_1.1.1                methylKit_1.3.3           
-## [21] GenomicRanges_1.28.4       GenomeInfoDb_1.12.2       
-## [23] IRanges_2.10.2             S4Vectors_0.14.3          
-## [25] BiocGenerics_0.22.0       
+##  [1] UpSetR_1.3.3               tidyr_0.6.3               
+##  [3] dplyr_0.7.2                qvalue_2.8.0              
+##  [5] limma_3.32.3               DSS_2.16.0                
+##  [7] bsseq_1.12.2               SummarizedExperiment_1.6.3
+##  [9] DelayedArray_0.2.7         matrixStats_0.52.2        
+## [11] Biobase_2.36.2             emdbook_1.3.9             
+## [13] gridExtra_2.2.1            reshape2_1.4.2            
+## [15] ggplot2_2.2.1              methylKit_1.3.3           
+## [17] GenomicRanges_1.28.4       GenomeInfoDb_1.12.2       
+## [19] IRanges_2.10.2             S4Vectors_0.14.3          
+## [21] BiocGenerics_0.22.0        rmarkdown_1.6             
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] R.utils_2.5.0            gtools_3.5.0            
-##  [3] assertthat_0.2.0         statmod_1.4.30          
-##  [5] BSgenome_1.44.0          GenomeInfoDbData_0.99.0 
-##  [7] Rsamtools_1.28.0         yaml_2.1.14             
-##  [9] impute_1.50.1            backports_1.1.0         
-## [11] numDeriv_2016.8-1        lattice_0.20-35         
-## [13] glue_1.1.1               bbmle_1.0.19            
-## [15] digest_0.6.12            XVector_0.16.0          
-## [17] colorspace_1.3-2         htmltools_0.3.6         
-## [19] Matrix_1.2-10            R.oo_1.21.0             
-## [21] plyr_1.8.4               XML_3.98-1.9            
-## [23] pkgconfig_2.0.1          zlibbioc_1.22.0         
-## [25] scales_0.4.1             BiocParallel_1.10.1     
-## [27] tibble_1.3.3             seqPattern_1.8.0        
-## [29] lazyeval_0.2.0           magrittr_1.5            
-## [31] mclust_5.3               evaluate_0.10.1         
-## [33] R.methodsS3_1.7.1        MASS_7.3-47             
-## [35] data.table_1.10.4        hms_0.3                 
-## [37] gridBase_0.4-7           locfit_1.5-9.1          
-## [39] munsell_0.4.3            plotrix_3.6-5           
-## [41] bindrcpp_0.2             Biostrings_2.44.1       
-## [43] compiler_3.4.1           fastseg_1.22.0          
-## [45] rlang_0.1.1              RCurl_1.95-4.8          
-## [47] bitops_1.0-6             tcltk_3.4.1             
-## [49] labeling_0.3             gtable_0.2.0            
-## [51] R6_2.2.2                 GenomicAlignments_1.12.1
-## [53] knitr_1.16               rtracklayer_1.36.4      
-## [55] rprojroot_1.2            bindr_0.1               
-## [57] permute_0.9-4            KernSmooth_2.23-15      
-## [59] stringi_1.1.5            Rcpp_0.12.12            
-## [61] coda_0.19-1
+##  [1] mclust_5.3               Rcpp_0.12.12            
+##  [3] locfit_1.5-9.1           lattice_0.20-35         
+##  [5] Rsamtools_1.28.0         Biostrings_2.44.1       
+##  [7] gtools_3.5.0             assertthat_0.2.0        
+##  [9] rprojroot_1.2            digest_0.6.12           
+## [11] R6_2.2.2                 plyr_1.8.4              
+## [13] backports_1.1.0          evaluate_0.10.1         
+## [15] coda_0.19-1              zlibbioc_1.22.0         
+## [17] rlang_0.1.1              lazyeval_0.2.0          
+## [19] data.table_1.10.4        R.utils_2.5.0           
+## [21] R.oo_1.21.0              Matrix_1.2-10           
+## [23] bbmle_1.0.19             labeling_0.3            
+## [25] BiocParallel_1.10.1      statmod_1.4.30          
+## [27] stringr_1.2.0            fastseg_1.22.0          
+## [29] RCurl_1.95-4.8           munsell_0.4.3           
+## [31] compiler_3.4.1           numDeriv_2016.8-1       
+## [33] rtracklayer_1.36.4       pkgconfig_2.0.1         
+## [35] htmltools_0.3.6          tibble_1.3.3            
+## [37] GenomeInfoDbData_0.99.0  XML_3.98-1.9            
+## [39] permute_0.9-4            GenomicAlignments_1.12.1
+## [41] MASS_7.3-47              bitops_1.0-6            
+## [43] R.methodsS3_1.7.1        gtable_0.2.0            
+## [45] magrittr_1.5             scales_0.4.1            
+## [47] stringi_1.1.5            XVector_0.16.0          
+## [49] bindrcpp_0.2             tools_3.4.1             
+## [51] glue_1.1.1               yaml_2.1.14             
+## [53] colorspace_1.3-2         knitr_1.16              
+## [55] bindr_0.1
 ```

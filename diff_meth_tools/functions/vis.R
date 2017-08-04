@@ -1,4 +1,4 @@
-
+# ---------------------------------------------------------------------------- #
 #' Visualise intersections between DMCs from given tools for calling differentiall methylated cytosines.
 #'
 #' @param list_toolsDMCs list of methylDiff diff or GRanges objects fom the methylKit library. The list should be named by the tools names.

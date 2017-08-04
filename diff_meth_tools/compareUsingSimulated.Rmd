@@ -508,29 +508,9 @@ source("./functions/vis.R")
 
 names_sets = rev(sort(as.character(levels(models.res.df$tool)))) # to plot tools in the same order as in barplots
 
-plot.intersetion.tools(models.res.diff[['5']], 
-                       vis=TRUE, keep.order=TRUE, sets = names_sets, 
-                       text.scale=c(2, 2, 2, 1.5, 2, 2.4),
-                       set.metadata = list(type = "matrix_rows", 
-                                           column = "Tools", colors = mycol, 
-                                           alpha = 0.5))
+plot.intersetion.tools(models.res.diff[['5']], vis=TRUE, keep.order = TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
 
-
-mycol = c( "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2")
-names(mycol) = names_sets
-
-cbPalette
-set.metadata = list(type = "matrix_rows", 
-column = "Tools", colors = cols, 
-alpha = 0.5)
-
-plot.intersetion.tools(models.res.diff[['10']], 
-                       vis=TRUE, keep.order = TRUE, sets = names_sets, 
-                       text.scale=c(2, 2, 2, 1.5, 2, 2.4),
-                       set.metadata = list(type = "matrix_rows", 
-                                           column = "Tools", colors = mycol, 
-                                           alpha = 0.5)
-                       )
+plot.intersetion.tools(models.res.diff[['10']], vis=TRUE, keep.order = TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
 
 plot.intersetion.tools(models.res.diff[['15']], vis=TRUE, keep.order = TRUE, sets = names_sets, text.scale=c(2, 2, 2, 1.5, 2, 2.4))
 
