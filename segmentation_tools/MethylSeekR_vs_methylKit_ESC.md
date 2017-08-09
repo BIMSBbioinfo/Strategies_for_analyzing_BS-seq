@@ -1,7 +1,7 @@
 Strategies for analyzing bisulfite-seq data: Comparison MethylSeekR and methylKit on Human ESC methylome
 ================
 Alexander Gosdschan
-2017-08-08
+2017-08-09
 
 Introduction
 ============
@@ -95,10 +95,8 @@ library("BSgenome.Hsapiens.UCSC.hg19")
 
 ``` r
 library(rtracklayer)
-require(genomation)
+library(genomation)
 ```
-
-    ## Loading required package: genomation
 
     ## Loading required package: grid
 
@@ -115,16 +113,9 @@ library(methylKit)
     ##     getTargetAnnotationStats, plotTargetAnnotation
 
 ``` r
-require(reshape2)
+library(reshape2)
+library(gridExtra)
 ```
-
-    ## Loading required package: reshape2
-
-``` r
-require(gridExtra)
-```
-
-    ## Loading required package: gridExtra
 
     ## 
     ## Attaching package: 'gridExtra'
@@ -134,13 +125,8 @@ require(gridExtra)
     ##     combine
 
 ``` r
-require(ggplot2)
-```
-
-    ## Loading required package: ggplot2
-
-``` r
-require(grid)
+library(ggplot2)
+library(grid)
 
 source("functions/functions.R")
 ```
@@ -395,6 +381,9 @@ saveRDS(res,file = paste0(data_dir,
                           "methylKit_hg19_methseg<maxInt=50,minSeg=5,G=3,eps=NULL>.rds"))
 ```
 
+Analyse data and create Figures
+===============================
+
 We can shortly have a look at the general methylation distributions.
 
 ``` r
@@ -611,13 +600,15 @@ p_heatmap <- arrangeGrob(p_heatmap, top = textGrob("d", x=unit(0, "npc"),y=unit(
 
 # 4. Arrange ggplot2 graphs with a specific width
 #+++++++++++++++++++++++
-pdf(file = paste0(figure_dir,"compTools.pdf"),width = 10,height = 7)
+# pdf(file = paste0(figure_dir,"compTools.pdf"),width = 10,height = 7)
 grid.arrange(p_seglength, p_cg, p_meth,legend,p_heatmap, nrow=2,ncol=4,layout_matrix = rbind(c(1,2,5,5),c(3,4,5,5)),widths=c(1, 1,1,1))
-dev.off()
 ```
 
-    ## png 
-    ##   2
+![](MethylSeekR_vs_methylKit_ESC_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-11-1.png)
+
+``` r
+# dev.off()
+```
 
 SessionInfo
 ===========

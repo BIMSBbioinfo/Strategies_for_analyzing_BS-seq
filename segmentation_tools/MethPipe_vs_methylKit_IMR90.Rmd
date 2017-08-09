@@ -1,5 +1,5 @@
 ---
-title: "Strategies for analyzing bisulfite-seq data: Detection of MethPipe PMDs using methylKit on Human IMR90 methylome"
+title: "Strategies for analyzing bisulfite-seq data: Comparison of MethPipe PMDs and methylKit on Human IMR90 methylome"
 author: "Alexander Gosdschan"
 output: rmarkdown::github_document
 date: "`r Sys.Date()`"
@@ -295,7 +295,7 @@ We see that `r  round(pmd.annot@annotation[["3"]],digits = 1)`% of the PMDs over
 
 Now we create Figures 5a-c of the manuscript.
 
-```{r}
+```{r ,fig.width=10,fig.height=3.5}
 
 # Prepare Data for Plotting -----------------------------------------------
 
@@ -388,10 +388,10 @@ p_meth <- arrangeGrob(p_meth, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "np
 
 # 4. Arrange ggplot2 graphs with a specific width
 #+++++++++++++++++++++++
-pdf(file = paste0(figure_dir,"compPMDs.pdf") ,width = 10,height = 3.5)
+# pdf(file = paste0(figure_dir,"compPMDs.pdf") ,width = 10,height = 3.5)
 grid.arrange(p_seglength, p_cg, p_meth,legend, 
              nrow=1,ncol=4,layout_matrix = rbind(c(1,2,3,4)),widths=c(1, 1,1,1))
-dev.off()
+# dev.off()
 
 ```
 
@@ -399,7 +399,7 @@ dev.off()
 
 This creates the Genome Browser View in Figure 5d of the manuscript. See important note below!
 
-```{r}
+```{r ,fig.width=10,fig.height=3.5}
 # library(Gviz)
 
 ## this is the region of interest
@@ -473,9 +473,9 @@ methTrack <- DataTrack(range = mbw[mbw %over% my_range1], genome = "hg19",
 
 
 ## save figure to pdf 
-pdf(file = paste0(figure_dir, "PMD_track.pdf"),width = 10,height = 3.5)
+# pdf(file = paste0(figure_dir, "PMD_track.pdf"),width = 10,height = 3.5)
 
-pT <- plotTracks(c(list(idxTrack, 
+plotTracks(c(list(idxTrack, 
                   axTrack, 
                   refGenes,
                   pmdTrack
@@ -495,12 +495,17 @@ pT <- plotTracks(c(list(idxTrack,
            col.line=NULL
 )
 
-dev.off()
+# dev.off()
 
 ```
 
 
 
 
+# SessionInfo
+
+```{r}
+sessionInfo()
+```
 
 

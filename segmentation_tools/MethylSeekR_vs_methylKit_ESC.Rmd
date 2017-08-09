@@ -412,7 +412,7 @@ mat.m$Feature <- factor(mat.m$Feature,levels = c("1","UMR","2","LMR","3","FMR"))
 
 And here we produce Figure 4 of the manuscript.
 
-```{r}
+```{r, fig.width=10,fig.height=7}
 
 # taken from http://stackoverflow.com/questions/12539348/ggplot-separate-legend-and-plot and 
 # http://www.sthda.com/english/wiki/ggplot2-easy-way-to-mix-multiple-graphs-on-the-same-page-r-software-and-data-visualization
@@ -490,9 +490,9 @@ p_heatmap <- arrangeGrob(p_heatmap, top = textGrob("d", x=unit(0, "npc"),y=unit(
 
 # 4. Arrange ggplot2 graphs with a specific width
 #+++++++++++++++++++++++
-pdf(file = paste0(figure_dir,"compTools.pdf"),width = 10,height = 7)
+# pdf(file = paste0(figure_dir,"compTools.pdf"),width = 10,height = 7)
 grid.arrange(p_seglength, p_cg, p_meth,legend,p_heatmap, nrow=2,ncol=4,layout_matrix = rbind(c(1,2,5,5),c(3,4,5,5)),widths=c(1, 1,1,1))
-dev.off()
+# dev.off()
 
 ```
 

@@ -1,4 +1,4 @@
-Strategies for analyzing bisulfite-seq data: Detection of MethPipe PMDs using methylKit on Human IMR90 methylome
+Strategies for analyzing bisulfite-seq data: Comparison of MethPipe PMDs and methylKit on Human IMR90 methylome
 ================
 Alexander Gosdschan
 2017-08-09
@@ -13,6 +13,8 @@ Goal
 
 We apply change-point based segmentation to a genome with PMDs. We segmented the Human IMR90 methylome from the Roadmap Epigenomics Project (Roadmap Epigenomics Consortium et al., Nature 2015) into four distinct features using methylKit. Then we compare feature-specific properties to published PMDs identified with MethPipe (Song et al., PLoS One. 2013).
 
+<!-- #### Note: This was mistakenly done during the preparation of the manuscript. -->
+<!-- In the original figure we mistakenly performed a manual liftover of the above aquired PMD regions from *hg18* to *hg19* genome using the UCSC website (https://genome.ucsc.edu/cgi-bin/hgLiftOver). The original output of this is liftOver is located in the **manuscript_data** folder of the github repository.  -->
 Functions
 =========
 
@@ -20,82 +22,10 @@ Load libraries and functions.
 
 ``` r
 library(rtracklayer)
-```
-
-    ## Loading required package: methods
-
-    ## Loading required package: GenomicRanges
-
-    ## Loading required package: stats4
-
-    ## Loading required package: BiocGenerics
-
-    ## Loading required package: parallel
-
-    ## 
-    ## Attaching package: 'BiocGenerics'
-
-    ## The following objects are masked from 'package:parallel':
-    ## 
-    ##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
-    ##     clusterExport, clusterMap, parApply, parCapply, parLapply,
-    ##     parLapplyLB, parRapply, parSapply, parSapplyLB
-
-    ## The following objects are masked from 'package:stats':
-    ## 
-    ##     IQR, mad, sd, var, xtabs
-
-    ## The following objects are masked from 'package:base':
-    ## 
-    ##     anyDuplicated, append, as.data.frame, cbind, colMeans,
-    ##     colnames, colSums, do.call, duplicated, eval, evalq, Filter,
-    ##     Find, get, grep, grepl, intersect, is.unsorted, lapply,
-    ##     lengths, Map, mapply, match, mget, order, paste, pmax,
-    ##     pmax.int, pmin, pmin.int, Position, rank, rbind, Reduce,
-    ##     rowMeans, rownames, rowSums, sapply, setdiff, sort, table,
-    ##     tapply, union, unique, unsplit, which, which.max, which.min
-
-    ## Loading required package: S4Vectors
-
-    ## 
-    ## Attaching package: 'S4Vectors'
-
-    ## The following object is masked from 'package:base':
-    ## 
-    ##     expand.grid
-
-    ## Loading required package: IRanges
-
-    ## Loading required package: GenomeInfoDb
-
-``` r
 library(methylKit)
 library(reshape2)
 library(genomation)
-```
-
-    ## Loading required package: grid
-
-    ## 
-    ## Attaching package: 'genomation'
-
-    ## The following objects are masked from 'package:methylKit':
-    ## 
-    ##     getFeatsWithTargetsStats, getFlanks, getMembers,
-    ##     getTargetAnnotationStats, plotTargetAnnotation
-
-``` r
 library(gridExtra)
-```
-
-    ## 
-    ## Attaching package: 'gridExtra'
-
-    ## The following object is masked from 'package:BiocGenerics':
-    ## 
-    ##     combine
-
-``` r
 library(ggplot2)
 library(grid)
 library(Gviz)
@@ -110,6 +40,7 @@ data_dir <- "/data/akalin/agosdsc/projects/methylation_paper/data/IMR90/"
 figure_dir <- "/data/akalin/agosdsc/projects/methylation_paper/figures/"
 binary_dir <- "/home/agosdsc/projects/methylation_paper/bin/"
 
+
 meth_bw <- "/data/akalin/Base/RoadmapEpigenomics/Experiment/DNAme_WGBS/FractionalMethylation_bigwig/E017_WGBS_FractionalMethylation.bigwig"
 cov_bw <- "/data/akalin/Base/RoadmapEpigenomics/Experiment/DNAme_WGBS/ReadCoverage_bigwig/E017_WGBS_ReadCoverage.bigwig"
 
@@ -118,6 +49,9 @@ meth.preload_full <- paste0(data_dir,"IMR90_WGBS_Methylation.rds")
 
 pmd_file <- paste0(data_dir,"Lister09_Human_hg19_IMR90.pmd.bb")
 pmd_bed_file <- gsub(pattern = ".bb",replacement = ".bed",x = pmd_file)
+
+# pmd_manuscript <- "/home/agosdsc/projects/methylation_paper/git/Strategies_for_analyzing_BS-seq/segmentation_tools/manuscript_data/Lister09_Human_hg19_liftover_IMR90.pmd.bed"
+
 
 kent.binary <- paste0(binary_dir,"bigBedToBed")
 ```
@@ -216,8 +150,11 @@ Since the PMD track does only contain the regions and no information about methy
 
 ``` r
 ## load both tracks
-pmd <- import(pmd_bed_file)
+pmd <- import(pmd_bed_file) ## correct data
 mbw <- readRDS(meth.preload_full)
+
+# pmd_ms <- import(pmd_manuscript) ## manuscript data
+
 
 # library(GenomicRanges)
 # 
@@ -249,8 +186,17 @@ if(length(pmd) == length(pmd.meth$x)) {
   pmd <- pmd[pmd.meth$Group.1]
   pmd$meth <- pmd.meth$x
 }
-
 pmd$num.marks <- countOverlaps(pmd,mbw)
+
+
+# pmd_ms.meth <- getSignalOverInterval(signal = mbw,intervals = pmd_ms,FUN = mean)
+# if(length(pmd) == length(pmd.meth$x)) { 
+#   pmd$meth <- pmd.meth$x
+# } else {
+#   pmd <- pmd[pmd.meth$Group.1]
+#   pmd$meth <- pmd.meth$x
+# }
+# pmd$num.marks <- countOverlaps(pmd,mbw)
 
 saveRDS(pmd,paste0(data_dir,"Lister09_Human_hg19_IMR90_methylation.pmd.rds"))
 ```
@@ -279,7 +225,7 @@ saveRDS(res.imr90, file = paste0(data_dir,
 ## This leads to a bias in average segment length which is removed by joining those neighbours. 
 res.imr90_joined <- joinSegmentNeighbours(res = res.imr90)
 
-saveRDS(res.imr90, file = paste0(data_dir,
+saveRDS(res.imr90_joined, file = paste0(data_dir,
                                  "methylKit_hg19_IMR90_methseg<minSeg=100,G=4>_joined.rds"))
 ```
 
@@ -357,7 +303,7 @@ pmd.annot
     ## percentage of feature elements overlapping with target:
 
     ##     1     2     3     4 
-    ## 18.04 91.13 78.05  8.41
+    ## 18.04 91.12 72.91  8.41
 
     ## 
 
@@ -460,16 +406,18 @@ p_meth <- arrangeGrob(p_meth, top = textGrob("c", x=unit(0, "npc"),y=unit(1, "np
 
 # 4. Arrange ggplot2 graphs with a specific width
 #+++++++++++++++++++++++
-pdf(file = paste0(figure_dir,"compPMDs.pdf") ,width = 10,height = 3.5)
+# pdf(file = paste0(figure_dir,"compPMDs.pdf") ,width = 10,height = 3.5)
 grid.arrange(p_seglength, p_cg, p_meth,legend, 
              nrow=1,ncol=4,layout_matrix = rbind(c(1,2,3,4)),widths=c(1, 1,1,1))
-dev.off()
 ```
 
-    ## png 
-    ##   2
+![](MethPipe_vs_methylKit_IMR90_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-9-1.png)
 
-This creates the Genome Browser View in Figure 5d of the manuscript.
+``` r
+# dev.off()
+```
+
+This creates the Genome Browser View in Figure 5d of the manuscript. See important note below!
 
 ``` r
 # library(Gviz)
@@ -545,7 +493,7 @@ methTrack <- DataTrack(range = mbw[mbw %over% my_range1], genome = "hg19",
 
 
 ## save figure to pdf 
-pdf(file = paste0(figure_dir, "PMD_track.pdf"),width = 10,height = 3.5)
+# pdf(file = paste0(figure_dir, "PMD_track.pdf"),width = 10,height = 3.5)
 
 plotTracks(c(list(idxTrack, 
                   axTrack, 
@@ -555,19 +503,106 @@ plotTracks(c(list(idxTrack,
                   unlist(methSegTrack,use.names = FALSE),
                   list(methTrack,
                        cpgIslands)), 
-             from = from, to = to, 
-             cex.title= 0.7,title.width = 1.5,rot.title =0,
+           from = from, to = to, 
+           cex.title= 0.7, 
+           title.width = 1.5,
+           rot.title =0,
            cex = 0.7, 
-           
-              sizes = c(0.8,2.2,3,1.5,1.5,1.5,1.5,1.5,3,1.5),
-           
+           sizes = c(0.8,2.2,3,1.5,1.5,1.5,1.5,1.5,3,1.5),
            col="black", 
            fontcolor = "black",
-           cex.axis= 0.6,col.line=NULL
+           cex.axis= 0.6,
+           col.line=NULL
 )
-
-dev.off()
 ```
 
-    ## png 
-    ##   2
+![](MethPipe_vs_methylKit_IMR90_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-10-1.png)
+
+``` r
+# dev.off()
+```
+
+SessionInfo
+===========
+
+``` r
+sessionInfo()
+```
+
+    ## R version 3.4.0 (2017-04-21)
+    ## Platform: x86_64-redhat-linux-gnu (64-bit)
+    ## Running under: CentOS Linux 7 (Core)
+    ## 
+    ## Matrix products: default
+    ## BLAS/LAPACK: /usr/lib64/R/lib/libRblas.so
+    ## 
+    ## locale:
+    ##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+    ##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+    ##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+    ##  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+    ##  [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+    ## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+    ## 
+    ## attached base packages:
+    ##  [1] grid      stats4    parallel  methods   stats     graphics  grDevices
+    ##  [8] utils     datasets  base     
+    ## 
+    ## other attached packages:
+    ##  [1] Gviz_1.20.0          ggplot2_2.2.1        gridExtra_2.2.1     
+    ##  [4] genomation_1.8.0     reshape2_1.4.2       methylKit_1.2.0     
+    ##  [7] rtracklayer_1.36.4   GenomicRanges_1.28.4 GenomeInfoDb_1.12.2 
+    ## [10] IRanges_2.10.2       S4Vectors_0.14.3     BiocGenerics_0.22.0 
+    ## 
+    ## loaded via a namespace (and not attached):
+    ##   [1] ProtGenerics_1.8.0            bitops_1.0-6                 
+    ##   [3] matrixStats_0.52.2            bit64_0.9-7                  
+    ##   [5] httr_1.2.1                    RColorBrewer_1.1-2           
+    ##   [7] rprojroot_1.2                 numDeriv_2016.8-1            
+    ##   [9] tools_3.4.0                   backports_1.1.0              
+    ##  [11] R6_2.2.2                      rpart_4.1-11                 
+    ##  [13] KernSmooth_2.23-15            Hmisc_4.0-3                  
+    ##  [15] DBI_0.7                       lazyeval_0.2.0               
+    ##  [17] colorspace_1.3-2              nnet_7.3-12                  
+    ##  [19] seqPattern_1.8.0              fastseg_1.22.0               
+    ##  [21] curl_2.7                      bit_1.1-12                   
+    ##  [23] compiler_3.4.0                Biobase_2.36.2               
+    ##  [25] htmlTable_1.9                 DelayedArray_0.2.7           
+    ##  [27] labeling_0.3                  checkmate_1.8.3              
+    ##  [29] scales_0.4.1                  readr_1.1.1                  
+    ##  [31] stringr_1.2.0                 digest_0.6.12                
+    ##  [33] Rsamtools_1.28.0              foreign_0.8-67               
+    ##  [35] rmarkdown_1.6                 R.utils_2.5.0                
+    ##  [37] XVector_0.16.0                dichromat_2.0-0              
+    ##  [39] base64enc_0.1-3               htmltools_0.3.6              
+    ##  [41] plotrix_3.6-5                 ensembldb_2.0.3              
+    ##  [43] bbmle_1.0.19                  limma_3.32.3                 
+    ##  [45] BSgenome_1.44.0               htmlwidgets_0.9              
+    ##  [47] rlang_0.1.1                   RSQLite_2.0                  
+    ##  [49] impute_1.50.1                 BiocInstaller_1.26.0         
+    ##  [51] shiny_1.0.3                   mclust_5.3                   
+    ##  [53] BiocParallel_1.10.1           gtools_3.5.0                 
+    ##  [55] acepack_1.4.1                 R.oo_1.21.0                  
+    ##  [57] VariantAnnotation_1.22.3      RCurl_1.95-4.8               
+    ##  [59] magrittr_1.5                  GenomeInfoDbData_0.99.0      
+    ##  [61] Formula_1.2-2                 Matrix_1.2-9                 
+    ##  [63] Rcpp_0.12.11                  munsell_0.4.3                
+    ##  [65] R.methodsS3_1.7.1             stringi_1.1.5                
+    ##  [67] yaml_2.1.14                   MASS_7.3-47                  
+    ##  [69] SummarizedExperiment_1.6.3    zlibbioc_1.22.0              
+    ##  [71] AnnotationHub_2.8.2           plyr_1.8.4                   
+    ##  [73] qvalue_2.8.0                  blob_1.1.0                   
+    ##  [75] lattice_0.20-35               Biostrings_2.44.2            
+    ##  [77] splines_3.4.0                 GenomicFeatures_1.28.4       
+    ##  [79] hms_0.3                       knitr_1.16                   
+    ##  [81] codetools_0.2-15              biomaRt_2.32.1               
+    ##  [83] XML_3.98-1.9                  evaluate_0.10.1              
+    ##  [85] biovizBase_1.24.0             latticeExtra_0.6-28          
+    ##  [87] data.table_1.10.4             httpuv_1.3.5                 
+    ##  [89] gtable_0.2.0                  emdbook_1.3.9                
+    ##  [91] gridBase_0.4-7                mime_0.5                     
+    ##  [93] xtable_1.8-2                  AnnotationFilter_1.0.0       
+    ##  [95] coda_0.19-1                   survival_2.41-3              
+    ##  [97] tibble_1.3.3                  GenomicAlignments_1.12.1     
+    ##  [99] AnnotationDbi_1.38.1          memoise_1.1.0                
+    ## [101] cluster_2.0.6                 interactiveDisplayBase_1.14.0
