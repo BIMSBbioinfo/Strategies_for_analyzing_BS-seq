@@ -17,11 +17,6 @@ Partially methylated domains (PMDs) are another methylome feature found, for ins
 
 We apply change-point based segmentation to a genome with PMDs. We segmented the Human IMR90 methylome from the Roadmap Epigenomics Project (Roadmap Epigenomics Consortium et al., Nature 2015) into four distinct features using methylKit. Then we compare feature-specific properties to published PMDs identified with MethPipe (Song et al., PLoS One. 2013).
 
-
-<!-- #### Note: This was mistakenly done during the preparation of the manuscript. -->
-
-<!-- In the original figure we mistakenly performed a manual liftover of the above aquired PMD regions from *hg18* to *hg19* genome using the UCSC website (https://genome.ucsc.edu/cgi-bin/hgLiftOver). The original output of this is liftOver is located in the **manuscript_data** folder of the github repository.  -->
-
 # Functions 
 
 Load libraries and functions.
@@ -47,6 +42,8 @@ data_dir <- "/data/akalin/agosdsc/projects/methylation_paper/data/IMR90/"
 figure_dir <- "/data/akalin/agosdsc/projects/methylation_paper/figures/"
 binary_dir <- "/home/agosdsc/projects/methylation_paper/bin/"
 
+os_type < -"linux"
+
 
 meth_bw <- "/data/akalin/Base/RoadmapEpigenomics/Experiment/DNAme_WGBS/FractionalMethylation_bigwig/E017_WGBS_FractionalMethylation.bigwig"
 cov_bw <- "/data/akalin/Base/RoadmapEpigenomics/Experiment/DNAme_WGBS/ReadCoverage_bigwig/E017_WGBS_ReadCoverage.bigwig"
@@ -56,8 +53,6 @@ meth.preload_full <- paste0(data_dir,"IMR90_WGBS_Methylation.rds")
 
 pmd_file <- paste0(data_dir,"Lister09_Human_hg19_IMR90.pmd.bb")
 pmd_bed_file <- gsub(pattern = ".bb",replacement = ".bed",x = pmd_file)
-
-# pmd_manuscript <- "/home/agosdsc/projects/methylation_paper/git/Strategies_for_analyzing_BS-seq/segmentation_tools/manuscript_data/Lister09_Human_hg19_liftover_IMR90.pmd.bed"
 
 
 kent.binary <- paste0(binary_dir,"bigBedToBed")
@@ -144,7 +139,7 @@ download.kent.binary <- function(output.file,os=c("linux","mac")) {
   
 } 
 
-#download.kent.binary(output.file = kent.binary, os = "linux")
+#download.kent.binary(output.file = kent.binary, os = os_type)
 
 
 cmd <- paste0("chmod +x ", kent.binary)
@@ -165,10 +160,9 @@ Since the PMD track does only contain the regions and no information about methy
 
 ```{r, eval=FALSE}
 ## load both tracks
-pmd <- import(pmd_bed_file) ## correct data
+pmd <- import(pmd_bed_file) 
 mbw <- readRDS(meth.preload_full)
 
-# pmd_ms <- import(pmd_manuscript) ## manuscript data
 
 
 # library(GenomicRanges)
@@ -202,16 +196,6 @@ if(length(pmd) == length(pmd.meth$x)) {
   pmd$meth <- pmd.meth$x
 }
 pmd$num.marks <- countOverlaps(pmd,mbw)
-
-
-# pmd_ms.meth <- getSignalOverInterval(signal = mbw,intervals = pmd_ms,FUN = mean)
-# if(length(pmd) == length(pmd.meth$x)) { 
-#   pmd$meth <- pmd.meth$x
-# } else {
-#   pmd <- pmd[pmd.meth$Group.1]
-#   pmd$meth <- pmd.meth$x
-# }
-# pmd$num.marks <- countOverlaps(pmd,mbw)
 
 saveRDS(pmd,paste0(data_dir,"Lister09_Human_hg19_IMR90_methylation.pmd.rds"))
 ```
